@@ -494,7 +494,6 @@ def parse_date(string):
 
     string = re.sub(r'[:\.\-\s/]', ' ', string)
 
-    ret = None
     for (regexp, fmt) in _table:
         if not re.search(regexp, string):
             continue
@@ -530,3 +529,22 @@ def word_split(s):
             idx += 1
         else:
             ret[idx] += c
+
+
+def ichunks(it, size):
+    """
+    Generator function.
+    Yields slices with "size"  elements from it iterable.
+    Last slice could have less elements.
+    """
+    while True:
+        ret = []
+        for x in range(size):
+            try:
+                ret.append(next(it))
+            except StopIteration:
+                if ret:
+                    yield ret
+                return
+
+        yield ret
