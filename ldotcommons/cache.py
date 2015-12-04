@@ -1,10 +1,11 @@
 # -*- encoding: utf-8 -*-
 
-from hashlib import sha1
 import os
 import shutil
 import tempfile
 import time
+
+from hashlib import sha1
 
 from ldotcommons import logging
 
@@ -13,7 +14,7 @@ def hashfunc(key):
     return sha1(key.encode('utf-8')).hexdigest()
 
 
-class NullCache(object):
+class NullCache:
     def __init__(self, *args, **kwargs):
         pass
 
@@ -24,9 +25,11 @@ class NullCache(object):
         pass
 
 
-class DiskCache(object):
+class DiskCache:
     def __init__(self, basedir=None, delta=-1, hashfunc=hashfunc,
-                 logger=logging.get_logger('zizi.cache.DiskCache')):
+                 logger=None):
+        if logger is None:
+            logger = logging.get_logger('ldotcommons.cache.DiskCache')
         self._is_tmp = False
         self._basedir = basedir
         self._delta = delta

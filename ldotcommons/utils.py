@@ -3,6 +3,7 @@ import configparser
 import datetime
 import importlib
 import os
+import queue
 import re
 import sys
 import time
@@ -82,6 +83,16 @@ class MultiDepthDict(dict):
                 for (k, v) in self.items() if k.startswith(full_prefix)}
 
 
+class IterableQueue(queue.Queue):
+    def __iter__(self):
+        while True:
+            try:
+                x = self.get_nowait()
+                yield x
+            except queue.Empty:
+                break
+
+
 class SingletonMetaclass(type):
     def __call__(cls, *args, **kwargs):  # nopep8
         instance = getattr(cls, '_instance', None)
@@ -90,6 +101,22 @@ class SingletonMetaclass(type):
                     '_instance',
                     super(SingletonMetaclass, cls).__call__(*args, **kwargs))
         return cls._instance
+
+
+class Null:
+    def __getattr__(self, attr):
+        return Null()
+
+    def __call__(self, *args, **kwargs):
+        return Null()
+
+
+class NullSingleton(Null, metaclass=SingletonMetaclass):
+    def __getattr__(self, attr):
+        return self
+
+    def __call__(self, *args, **kwargs):
+        return self
 
 
 class ReadOnlyAttribute(Exception):

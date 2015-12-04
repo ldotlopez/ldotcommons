@@ -14,6 +14,7 @@ setup(
     description='Useful ldotlopez\'s stuff',
     long_description=open('README').read(),
     install_requires=[
+        "aiohttp",
         "appdirs",
         "sqlalchemy",
     ],

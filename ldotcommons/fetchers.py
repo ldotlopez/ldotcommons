@@ -1,12 +1,15 @@
+import asyncio
 import gzip
 import io
-from os import path
 import socket
 import sys
+
+from os import path
 from urllib import request, error as urllib_error
 
-from . import logging, utils
-from .cache import NullCache, DiskCache
+import aiohttp
+
+from . import cache, logging, utils
 
 
 class FetchError(Exception):
@@ -54,24 +57,26 @@ class MockFetcher(BaseFetcher):
 
 
 class UrllibFetcher(BaseFetcher):
-    def __init__(self, headers={}, cache=False, cache_delta=-1, logger=None):
+    def __init__(self, headers={}, enable_cache=False, cache_delta=-1,
+                 logger=None):
         if not logger:
             logger = logging.get_logger('ldotcommons.fetchers.urllibfetcher')
 
         self._logger = logger
 
-        if cache:
-            cache_path = utils.user_path('cache', 'urllibfetcher',
-                                         create=True, is_folder=True)
+        if enable_cache:
+            cache_path = utils.user_path(
+                'cache', 'urllibfetcher', create=True, is_folder=True)
 
-            self._cache = DiskCache(basedir=cache_path, delta=cache_delta,
-                                    logger=self._logger.getChild('cache'))
+            self._cache = cache.DiskCache(
+                basedir=cache_path, delta=cache_delta,
+                logger=self._logger.getChild('cache'))
 
             msg = 'UrllibFetcher using cache {path}'
             msg = msg.format(path=cache_path)
             self._logger.debug(msg)
         else:
-            self._cache = NullCache()
+            self._cache = cache.NullCache()
 
         self._headers = headers
 
@@ -96,3 +101,26 @@ class UrllibFetcher(BaseFetcher):
         self._logger.debug("stored in cache: {}".format(url))
         self._cache.set(url, buff)
         return buff
+
+
+class AIOHttpFetcher:
+    def __init__(self, enable_cache=False, cache_delta=60*5,
+                 log_name='aiohttpfetcher', log_level='WARNING'):
+        if False:
+            self._cache = cache.DiskCache(delta=cache_delta)
+        else:
+            self._cache = cache.NullCache()
+
+    @asyncio.coroutine
+    def fetch(self, url, **opts):
+        buff = self._cache.get(url)
+        if buff:
+            print("Found in cache!!!!!!!!!!!!!!")
+            return buff
+
+        with aiohttp.ClientSession(**opts) as client:
+            resp = yield from client.get(url)
+            text = yield from resp.text()
+
+        self._cache.set(url, buff)
+        return text
