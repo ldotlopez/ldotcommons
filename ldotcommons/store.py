@@ -47,7 +47,7 @@ def type_validator(type_table, cast=False, relaxed=False):
         if k in type_table:
             try:
                 return cast_value(v, type_table[k])
-            except ValueError():
+            except ValueError:
                 pass
             raise TypeError(k + ": invalid type")
 
