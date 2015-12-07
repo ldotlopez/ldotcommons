@@ -1,4 +1,5 @@
 import asyncio
+import functools
 import gzip
 import io
 import socket
@@ -105,22 +106,36 @@ class UrllibFetcher(BaseFetcher):
 
 class AIOHttpFetcher:
     def __init__(self, enable_cache=False, cache_delta=60*5,
-                 log_name='aiohttpfetcher', log_level='WARNING'):
-        if False:
-            self._cache = cache.DiskCache(delta=cache_delta)
+                 logger=None):
+        if enable_cache:
+            cache_path = utils.user_path(
+                'cache', 'fetcher', create=True, is_folder=True)
+
+            self._cache = cache.DiskCache(
+                basedir=cache_path, delta=cache_delta, logger=logger)
+
         else:
             self._cache = cache.NullCache()
 
+        self._loop = asyncio.get_event_loop()
+
     @asyncio.coroutine
     def fetch(self, url, **opts):
-        buff = self._cache.get(url)
+        buff = yield from self._loop.run_in_executor(
+            None,
+            functools.partial(self._cache.get, url)
+        )
         if buff:
-            print("Found in cache!!!!!!!!!!!!!!")
             return buff
 
         with aiohttp.ClientSession(**opts) as client:
             resp = yield from client.get(url)
-            text = yield from resp.text()
+            buff = yield from resp.content.read()
+            yield from resp.release()
 
-        self._cache.set(url, buff)
-        return text
+        yield from self._loop.run_in_executor(
+            None,
+            functools.partial(self._cache.set, url, buff)
+        )
+
+        return buff
