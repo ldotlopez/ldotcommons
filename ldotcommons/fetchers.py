@@ -10,10 +10,10 @@ from urllib import request, error as urllib_error
 
 import aiohttp
 
-from . import cache, logging, utils
+from . import cache, exceptions, logging, utils
 
 
-class FetchError(Exception):
+class FetchError(exceptions.Exception):
     pass
 
 
