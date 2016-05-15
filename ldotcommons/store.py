@@ -1,208 +1,188 @@
-import itertools
-from glob import fnmatch
+import yaml
 
-_undef = object()
-_str_booleans = (
-    '0', '1',
-    'no', 'yes',
-    'n', 'y',
-    'false', 'true'
-)
+_UNDEF = object()
 
 
-class NonEmptyStr(str):
+class IllegalKeyError(ValueError):
+    def __unicode__(self):
+        return "Illegal key: '{}'".format(self.args[0])
+
+    __str__ = __unicode__
+
+
+class KeyNotFoundError(KeyError):
+    def __unicode__(self):
+        return "Key not found: '{}'".format(self.args[0])
+
+    __str__ = __unicode__
+
+
+class ValidationError(Exception):
+    def __init__(self, key, value, msg):
+        self.key = key
+        self.value = value
+        self.msg = msg
+
+    def __unicode__(self):
+        return "Invalid value {} for key '{}': {}".format(
+            repr(self.value), self.key, self.msg or 'no reason')
+
+    __str__ = __unicode__
+
+
+class ParserError(Exception):
     pass
 
 
-def cast_value(v, req_type):
-    if isinstance(v, req_type):
-        return v
+def flatten_dict(d):
+    if not isinstance(d, dict):
+        raise TypeError()
 
-    if req_type is int:
-        return int(v)
+    ret = {}
 
-    if req_type is NonEmptyStr:
-        v = str(v)
-        if v is None or v == '':
-            raise ValueError(v)
-        return v
-
-    if req_type is bool:
-        if isinstance(v, str) and v.lower() in _str_booleans:
-            return v in (
-                x for (idx, x) in enumerate(_str_booleans) if idx % 2
-            )
+    for (k, v) in d.items():
+        if isinstance(v, dict):
+            subret = flatten_dict(v)
+            subret = {k + '.' + subk: subv for (subk, subv) in subret.items()}
+            ret.update(subret)
         else:
-            raise ValueError(v)
+            ret[k] = v
 
-    try:
-        return req_type(v)
-    except ValueError as e:
-        raise ValueError(v) from e
+    return ret
 
 
-def type_validator(type_table, cast=False, relaxed=False):
-    def _validator(k, v):
-        # Check for exact match
-        if k in type_table:
+class TypeValidator:
+    def __init__(self, type_map):
+        self.type_map = type_map
+
+    def __call__(self, k, v):
+        if k in self.type_map:
             try:
-                return cast_value(v, type_table[k])
-            except ValueError:
+                return self.type_map[k](v)
+            except:
                 pass
-            raise TypeError(k + ": invalid type")
 
-        # Check wildcards (regexps in the future?)
-        for (candidate_key, candidate_type) in type_table.items():
-            if fnmatch.fnmatch(k, candidate_key):
-                try:
-                    return cast_value(v, candidate_type)
-                except ValueError():
-                    pass
-                raise TypeError(k + ": invalid type")
+            raise ValidationError(k, v, 'Incompatible type')
 
-        # No matches
-        if relaxed:
-            return v
-
-        # Finally raise a typeerror
-        raise TypeError(k + ": can't validate")
-
-    return _validator
+        return v
 
 
-class Store(dict):
-    """
-    Key-value store using a namespace schema.
-    Namespace separator is dot ('.') character
-    """
-    def __init__(self, d={}, validator=None):
-        super(Store, self).__init__()
-
-        self._validators = {}
-        self._namespaces = set()
-
-        if validator:
-            self.set_validator(validator)
-
-        for (k, v) in d.items():
-            self.__setitem__(k, v)
-
-    def set(self, key, value):
-        return self.__setitem__(key, value)
-
-    def get(self, key, default=_undef):
-        if key in self:
-            return self.__getitem__(key)
-
-        elif default is not _undef:
-            return default
-
-        else:
-            raise KeyError(key)
-
-    def delete(self, key):
-        return self.__delitem__(key)
+class Store:
+    def __init__(self):
+        self._d = {}
+        self._validators = []
 
     @staticmethod
-    def get_namespaces(key):
+    def _process_key(key):
+        if not isinstance(key, str):
+            raise IllegalKeyError(key)
+
         parts = key.split('.')
-        return ('.'.join(parts[0:i+1]) for i in range(len(parts)-1))
+        if not all(parts):
+            raise IllegalKeyError(key)
 
-    def has_namespace(self, namespace):
-        return namespace in self._namespaces
+        return parts
 
-    def set_validator(self, func, ns=None, recheck=True):
-        if ns in self._validators:
-            raise Exception('Validator conflict')
+    def _process_value(self, key, value):
+        for vfunc in self._validators:
+            value = vfunc(key, value)
 
-        self._validators[ns] = func
+        return value
 
-        if recheck:
-            # Dont use .children method here
-            subkeys = self.keys()
-            if ns:
-                s = ns + '.'
-                subkeys = filter(lambda k: k.startswith(s), subkeys)
+    def _get_subdict(self, key, create=False):
+        d = self._d
 
-            for k in subkeys:
-                self.set(k, self.get(k))
+        parts = self._process_key(key)
+        for idx, p in enumerate(parts[:-1]):
+            if p not in d and create:
+                d[p] = {}
 
-    def find_validator(self, key):
-        for ns in reversed([None] + list(self.get_namespaces(key))):
-            if ns in self._validators:
-                return self._validators[ns]
+            # Override existing values with dicts is allowed
+            # Subclass Store or use a validator if this behaviour needs to be
+            # changed
+            if p in d and not isinstance(d[p], dict):
+                d[p] = {}
 
-    def __setitem__(self, key, value):
-        if not isinstance(key, str) or key == '':
-            raise TypeError(key)
+            if p not in d:
+                raise KeyNotFoundError('.'.join(parts[:idx]))
 
-        validator = self.find_validator(key)
-        if validator:
-            value = validator(key, value)
+            d = d[p]
 
-        for x in self.get_namespaces(key):
-            self._namespaces.add(x)
+        return parts[-1], d
 
-        super().__setitem__(key, value)
-
-    def get_tree(self, namespace, default=_undef):
-        if namespace not in self._namespaces:
-            if default is _undef:
-                raise KeyError(namespace)
-            else:
-                return default
-
-        r = {}
-        idx = len(namespace) + 1
-        for subkey in self.children(namespace, fullpath=True):
-            if subkey in self._namespaces:
-                r[subkey[idx:]] = self.get_tree(subkey)
-            else:
-                r[subkey[idx:]] = self.get(subkey)
-
-        return r
-
-    def __delitem__(self, key):
-        if key in self._namespaces:
-            children = list(self.children(key, fullpath=True))
-            for child in children:
-                del(self[child])
-            self._namespaces.remove(key)
-
-        if key in self:
-            super().__delitem__(key)
-
-    def children(self, key, fullpath=False):
-        s = key + '.'
-        r = itertools.chain((k for k in self), self._namespaces)
-
-        # Filter children…
-        r = filter(lambda k: k.startswith(s), r)
-
-        # …but not grandchildrens
-        r = filter(lambda k: '.' not in k[len(s):], r)
-
-        # Full or short path?
-        if not fullpath:
-            r = map(lambda k: k[len(s):], r)
-
-        return r
-
-    def load_configparser(self, cp, root_sections=()):
-        def is_root(x):
-            return x in root_sections
-
-        kvs = {}
-
-        for s in filter(is_root, cp.sections()):
-            kvs.update({k: v for (k, v) in cp[s].items()})
-
-        for s in filter(lambda x: not is_root(x), cp.sections()):
-            kvs.update({s + '.' + k: v for (k, v) in cp[s].items()})
-
-        for (k, v) in kvs.items():
-            self.set(k, v)
+    def load_(self, stream):
+        d = flatten_dict(yaml.load(stream))
+        for (k, v) in d.items():
+            self.set_(k, v)
 
     def load_arguments(self, args):
         for (k, v) in vars(args).items():
-            self.set(k, v)
+            self.set_(k, v)
+
+    def add_validator_(self, fn):
+        self._validators.append(fn)
+
+    def set_(self, key, value):
+        subkey, d = self._get_subdict(key, create=True)
+        v = self._process_value(key, value)
+        d[subkey] = v
+
+    def get_(self, key, default=_UNDEF):
+        if key is None:
+            return self._d
+
+        try:
+            subkey, d = self._get_subdict(key, create=False)
+            return d[subkey]
+
+        except (KeyNotFoundError, KeyError):
+            if default != _UNDEF:
+                return default
+            else:
+                raise KeyNotFoundError(key)
+
+    def delete_(self, key):
+        subkey, d = self._get_subdict(key)
+        try:
+            del(d[subkey])
+            return
+        except KeyError:
+            pass  # Mask real exception
+
+        raise KeyNotFoundError(key)
+
+    def children_(self, key=None):
+        if key is None:
+            return list(self._d.keys())
+
+        subkey, d = self._get_subdict(key)
+        try:
+            return list(d[subkey].keys())
+        except KeyError:
+            raise KeyNotFoundError(key)
+
+    def all_keys(self):
+        return flatten_dict(self._d)
+
+    def has_key_(self, key):
+        try:
+            subkey, d = self._get_subdict(key)
+        except KeyNotFoundError:
+            return False
+
+        return subkey in d
+
+    def has_namespace_(self, ns):
+        try:
+            subns, d = self._get_subdict(ns)
+        except KeyNotFoundError:
+            return False
+
+        return subns in d and isinstance(d[subns], dict)
+
+    def write(self, fh):
+        fh.write(yaml.dump(self._d))
+
+    __contains__ = has_key_
+    __setitem__ = get_
+    __setitem__ = set_
