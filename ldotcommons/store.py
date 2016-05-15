@@ -110,24 +110,24 @@ class Store:
 
         return parts[-1], d
 
-    def load_(self, stream):
+    def load(self, stream):
         d = flatten_dict(yaml.load(stream))
         for (k, v) in d.items():
-            self.set_(k, v)
+            self.set(k, v)
 
     def load_arguments(self, args):
         for (k, v) in vars(args).items():
-            self.set_(k, v)
+            self.set(k, v)
 
-    def add_validator_(self, fn):
+    def add_validator(self, fn):
         self._validators.append(fn)
 
-    def set_(self, key, value):
+    def set(self, key, value):
         subkey, d = self._get_subdict(key, create=True)
         v = self._process_value(key, value)
         d[subkey] = v
 
-    def get_(self, key, default=_UNDEF):
+    def get(self, key, default=_UNDEF):
         if key is None:
             return self._d
 
@@ -141,7 +141,7 @@ class Store:
             else:
                 raise KeyNotFoundError(key)
 
-    def delete_(self, key):
+    def delete(self, key):
         subkey, d = self._get_subdict(key)
         try:
             del(d[subkey])
@@ -151,7 +151,7 @@ class Store:
 
         raise KeyNotFoundError(key)
 
-    def children_(self, key=None):
+    def children(self, key=None):
         if key is None:
             return list(self._d.keys())
 
@@ -164,7 +164,7 @@ class Store:
     def all_keys(self):
         return flatten_dict(self._d)
 
-    def has_key_(self, key):
+    def has_key(self, key):
         try:
             subkey, d = self._get_subdict(key)
         except KeyNotFoundError:
@@ -172,7 +172,7 @@ class Store:
 
         return subkey in d
 
-    def has_namespace_(self, ns):
+    def has_namespace(self, ns):
         try:
             subns, d = self._get_subdict(ns)
         except KeyNotFoundError:
@@ -183,6 +183,7 @@ class Store:
     def write(self, fh):
         fh.write(yaml.dump(self._d))
 
-    __contains__ = has_key_
-    __setitem__ = get_
-    __setitem__ = set_
+    __contains__ = has_key
+    __setitem__ = get
+    __setitem__ = set
+    __delitem__ = delete
