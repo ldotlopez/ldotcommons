@@ -20,6 +20,12 @@
 import functools
 import logging
 
+try:
+    import colorama
+    _has_color = True
+except ImportError:
+    _has_color = False
+
 from ldotcommons import utils
 
 
@@ -28,17 +34,47 @@ LOGGING_FORMAT = "[%(levelname)s] [%(name)s] %(message)s"
 _loggers = dict()
 _log_level = logging.DEBUG
 
+DEBUG = logging.DEBUG
+INFO = logging.INFO
+WARNING = logging.WARNING
+ERROR = logging.ERROR
+CRITICAL = logging.CRITICAL
+
 
 class EncodedStreamHandler(logging.StreamHandler):
+    if _has_color:
+        _color_map = {
+            'DEBUG': colorama.Fore.CYAN,
+            'INFO': colorama.Fore.GREEN,
+            'WARNING': colorama.Fore.YELLOW,
+            'ERROR': colorama.Fore.RED,
+            'CRITICAL': colorama.Back.RED,
+        }
+    else:
+        _color_map = {}
+
     def __init__(self, encoding='utf-8', *args, **kwargs):
         super(EncodedStreamHandler, self).__init__(*args, **kwargs)
         self.encoding = encoding
+        self._color_reset = b''
         self.terminator = self.terminator.encode(self.encoding)
+        if _has_color:
+            colorama.init()
+            self._color_map = {k: v.encode(self.encoding)
+                               for (k, v) in self._color_map.items()}
+            self._color_reset = colorama.Style.RESET_ALL.encode(self.encoding)
 
     def emit(self, record):
         try:
             msg = self.format(record).encode(self.encoding)
             stream = self.stream
+            if _has_color:
+                msg = (
+                    self._color_map.get(record.levelname, b'') +
+                    msg +
+                    self._color_reset
+                )
+
             stream.buffer.write(msg)
             stream.buffer.write(self.terminator)
             self.flush()
