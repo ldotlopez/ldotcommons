@@ -110,6 +110,17 @@ class Store:
 
         return parts[-1], d
 
+    def empty(self):
+        self._d = {}
+
+    def replace(self, data):
+        self.empty()
+        self.update(data)
+
+    def update(self, data):
+        for (k, v) in flatten_dict(data).items():
+            self.set(k, v)
+
     def load(self, stream):
         d = flatten_dict(yaml.load(stream))
         for (k, v) in d.items():

@@ -75,6 +75,21 @@ class SelectorInterfaceTest(unittest.TestCase):
         self.assertEqual(s.get('x'), 'a')
         self.assertEqual(s.get(None), {'x': 'a'})
 
+    def test_empty(self):
+        s = store.Store()
+        s.set('x', 1)
+        s.empty()
+
+        self.assertFalse(s.has_key('x'))
+
+    def test_replace(self):
+        s = store.Store()
+        s.set('x', 1)
+        s.replace({'y': 2})
+
+        self.assertFalse(s.has_key('x'))
+        self.assertTrue(s.has_key('y'))
+
     def test_override_with_dict(self):
         s = store.Store()
         s.set('x', 1)
