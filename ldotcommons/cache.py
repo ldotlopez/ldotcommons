@@ -1,13 +1,13 @@
 # -*- encoding: utf-8 -*-
 
+from ldotcommons import utils
+
 import os
 import shutil
 import tempfile
 import time
 
 from hashlib import sha1
-
-from ldotcommons import logging
 
 
 def hashfunc(key):
@@ -28,12 +28,10 @@ class NullCache:
 class DiskCache:
     def __init__(self, basedir=None, delta=-1, hashfunc=hashfunc,
                  logger=None):
-        if logger is None:
-            logger = logging.get_logger('ldotcommons.cache.DiskCache')
         self._is_tmp = False
         self._basedir = basedir
         self._delta = delta
-        self._logger = logger
+        self._logger = logger or utils.NullSingleton()
 
         if not self._basedir:
             self._basedir = tempfile.mkdtemp()

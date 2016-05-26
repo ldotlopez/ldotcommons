@@ -15,7 +15,3 @@ class Exception(builtins.Exception):
                 raise TypeError(msg)
 
             setattr(self, k, v)
-
-
-class ParamError(Exception):
-    pass

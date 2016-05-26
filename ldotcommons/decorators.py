@@ -32,7 +32,9 @@ def accepts(*types):
              Must specify type for each parameter.
     """
     def info(fname, expected, actual, flag):
-        """ Convenience function returns nicely formatted error/warning msg. """
+        """
+        Convenience function returns nicely formatted error/warning msg.
+        """
         format = lambda types: ', '.join([str(t).split("'")[1] for t in types])
         expected, actual = format(expected), format(actual)
         msg = "'%s' method " % fname \
@@ -50,26 +52,31 @@ def accepts(*types):
                     try:
                         arg = args[i]
                     except IndexError:
-                        raise ArgCountError("Invalid number of arguments: got %d expected %d" %
+                        msg = "Invalid number of arguments: got %d expected %d"
+                        raise ArgCountError(msg %
                                             (len(args), len(types)))
 
                     if isinstance(types[i], type):
                         if issubclass(type(arg), types[i]):
                             continue
                         else:
-                            raise TypeError(info(f.__name__, types, tuple(map(type, args)), 0))
-                            #try:
-                            #    types[i](arg)
-                            #    continue
-                            #except ValueError:
-                            #    raise TypeError(info(f.__name__, types, tuple(map(type, args)), 0))
+                            raise TypeError(info(
+                                f.__name__, types, tuple(map(type, args)), 0))
+                            # try:
+                            #     types[i](arg)
+                            #     continue
+                            # except ValueError:
+                            #     raise TypeError(info(
+                            #         f.__name__,types, tuple(map(type, args)), 0))  # nopep8
 
                     elif isinstance(types[i], collections.Callable):
                         if not types[i](arg):
-                            raise TypeError(info(f.__name__, types, tuple(map(type, args)), 0))
+                            raise TypeError(info(
+                                f.__name__, types, tuple(map(type, args)), 0))
 
                     else:
-                        raise TypeError(info(f.__name__, types, tuple(map(type, args)), 0))
+                        raise TypeError(info(
+                            f.__name__, types, tuple(map(type, args)), 0))
 
                 return f(*args)
 
@@ -84,11 +91,13 @@ def symbol_loader(symbol_param, defaults=None):
     def decorator(function):
         @functools.wraps(function)
         def wrapper(*args, **kwargs):
-            if not symbol_param in kwargs:
+            if symbol_param not in kwargs:
                 kwargs[symbol_param] = defaults
 
-            if not symbol_param in kwargs or not callable(kwargs[symbol_param]):
-                kwargs[symbol_param] = get_symbol(kwargs.get(symbol_param, defaults))
+            if (symbol_param not in kwargs or
+               not callable(kwargs[symbol_param])):
+                kwargs[symbol_param] = get_symbol(
+                    kwargs.get(symbol_param, defaults))
 
             function(*args, **kwargs)
 

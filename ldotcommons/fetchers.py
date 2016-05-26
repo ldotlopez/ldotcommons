@@ -64,9 +64,7 @@ class UrllibFetcher(BaseFetcher):
                  logger=None, **opts):
 
         # Configure logger
-        if not logger:
-            logger = logging.get_logger('ldotcommons.fetchers.urllibfetcher')
-        self._logger = logger
+        self._logger = logger or utils.NullSingleton()
 
         # Display errors
         for o in opts:
@@ -130,9 +128,7 @@ class AIOHttpFetcher:
                  enable_cache=False, cache_delta=-1,
                  logger=None, **opts):
         # Configure logger
-        if not logger:
-            logger = logging.get_logger('ldotcommons.fetchers.aiohttp')
-        self._logger = logger
+        self._logger = logger or utils.NullSingleton()
 
         # Display errors
         for o in opts:

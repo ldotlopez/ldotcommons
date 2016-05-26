@@ -418,6 +418,13 @@ def user_path(typ, name=None, prog=None, create=False, is_folder=None):
     return ret
 
 
+def argument(*args, **kwargs):
+    """argparse argument wrapper to ease the command argument definitions"""
+    def wrapped_arguments():
+        return args, kwargs
+    return wrapped_arguments
+
+
 def shortify(s, length=50):
     """
     Returns a shortified version of s
