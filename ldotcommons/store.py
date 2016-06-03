@@ -191,7 +191,7 @@ class Store:
 
         return subns in d and isinstance(d[subns], dict)
 
-    def write(self, fh):
+    def dump(self, fh):
         fh.write(yaml.dump(self._d))
 
     __contains__ = has_key
