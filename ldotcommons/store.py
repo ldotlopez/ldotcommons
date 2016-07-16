@@ -68,9 +68,14 @@ class TypeValidator:
 
 
 class Store:
-    def __init__(self):
+    def __init__(self, items={}, validators=[]):
         self._d = {}
         self._validators = []
+
+        for validator in validators:
+            self.add_validator(validator)
+
+        self.update(items)
 
     @staticmethod
     def _process_key(key):
