@@ -2,21 +2,21 @@
 
 from distutils.core import setup
 
+fh = open("requirements.txt")
+pkgs = filter(lambda line: line and line[0] >= 'a' and line[0] <= 'z',
+              fh.readlines())
+pkgs = list(pkgs)
+
 setup(
     name='appkit',
-    version='0.0.0.20160520.1',
+    version='0.0.0.20160804.1',
     author='Luis López',
     author_email='ldotlopez@gmail.com',
     packages=['appkit'],
     scripts=[],
     url='https://github.com/ldotlopez/appkit',
     license='LICENSE.txt',
-    description='Useful ldotlopez\'s stuff',
+    description='Application toolkit',
     long_description=open('README').read(),
-    install_requires=[
-        # "aiohttp",
-        # "appdirs",
-        # "pyyaml",
-        # "sqlalchemy",
-    ],
+    install_requires=pkgs,
 )
