@@ -3,7 +3,7 @@
 from distutils.core import setup
 
 fh = open("requirements.txt")
-pkgs = filter(lambda line: line and line[0] > 'a' and line[0] < 'z',
+pkgs = filter(lambda line: line and line[0] >= 'a' and line[0] <= 'z',
               fh.readlines())
 pkgs = list(pkgs)
 
