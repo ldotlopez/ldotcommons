@@ -7,6 +7,8 @@ class SingletonMetaclass(type):
                     super(SingletonMetaclass, cls).__call__(*args, **kwargs))
         return cls._instance
 
+NoneType = type(None)
+
 
 class Null:
     def __getattr__(self, attr):

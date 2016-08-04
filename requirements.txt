@@ -1,6 +1,6 @@
-aiohttp
 appdirs
 pyyaml
 
 # sqlalchemy_helpers
-sqlalchemy
+# sqlalchemy
+# aiohttp

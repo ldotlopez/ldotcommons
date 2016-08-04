@@ -13,11 +13,7 @@ import warnings
 import appdirs
 
 
-NoneType = type(None)
-
-
 class DictAction(argparse.Action):
-
     """
     Convert a series of --foo key=value --foo key2=value2 into a dict like:
     { key: value, key2: value}
