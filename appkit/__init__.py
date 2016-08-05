@@ -1,7 +1,11 @@
-from appkit.baseapp import BaseApp, BaseExtension
-from appkit.cliapp import CLIApp, CommandExtension
+from appkit.app import (
+    BaseApp, BaseExtension,
+    CLIApp, CommandExtension,
+    cliargument
+)
 
 __all__ = [
     'BaseApp', 'BaseExtension',
-    'CLIApp', 'CommandExtension'
+    'CLIApp', 'CommandExtension',
+    'cliargument'
 ]

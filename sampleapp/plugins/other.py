@@ -1,7 +1,7 @@
-from appkit import cliapp
+import appkit
 
 
-class Other(cliapp.CommandExtension):
+class Other(appkit.CommandExtension):
     __extension_name__ = 'other'
 
     help = 'Optional command'

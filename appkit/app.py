@@ -1,10 +1,28 @@
 import argparse
 import sys
 
-from appkit import baseapp
+
+from appkit import extension
+from appkit import extensionmanager
+from appkit import logging
 
 
-class CLIApp(baseapp.BaseApp):
+class BaseApp(extensionmanager.ExtensionManager):
+    def __init__(self, name):
+        super().__init__(name, logger=logging.get_logger('extension-manager'))
+        self.logger = logging.get_logger(name)
+
+    def get_extension(self, name, *args, **kwargs):
+        return self.get_extension_class(name)(self, *args, **kwargs)
+
+
+class BaseExtension(extension.Extension):
+    def __init__(self, app):
+        super().__init__()
+        self.app = app
+
+
+class CLIApp(BaseApp):
     @classmethod
     def build_argument_parser(cls):
         parser = argparse.ArgumentParser(add_help=False)
@@ -89,7 +107,7 @@ class CLIApp(baseapp.BaseApp):
         self.run(*sys.argv[1:])
 
 
-class CommandExtension(baseapp.BaseExtension):
+class CommandExtension(BaseExtension):
     help = ''
     arguments = ()
 
@@ -108,7 +126,7 @@ class CommandArgumentError(Exception):
     pass
 
 
-def argument(*args, **kwargs):
+def cliargument(*args, **kwargs):
     """
     argparse argument wrapper to ease the command argument definitions
     """

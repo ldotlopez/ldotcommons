@@ -1,5 +1,4 @@
 import appkit
-from appkit import cliapp
 
 
 class BackgroundUpdater(appkit.CommandExtension):
@@ -7,7 +6,7 @@ class BackgroundUpdater(appkit.CommandExtension):
 
     help = 'Change desktop background'
     arguments = (
-        cliapp.argument(
+        appkit.cliargument(
             '-d', '--directory',
             help='Choose random background from directory',
             required=True
