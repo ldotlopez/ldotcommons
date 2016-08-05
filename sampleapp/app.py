@@ -1,7 +1,7 @@
-from appkit import app
+import appkit
 
 
-class App(app.App):
+class App(appkit.CLIApp):
     def __init__(self):
         super().__init__('sampleapp')
         self.load_plugin('backgroundupdater')

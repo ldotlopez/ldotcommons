@@ -1,19 +1,10 @@
 import argparse
 import sys
 
-from appkit import extension
-from appkit import extensionmanager
-from appkit import logging
+from appkit import baseapp
 
 
-class App(extensionmanager.ExtensionManager):
-    def __init__(self, name):
-        super().__init__(name, logger=logging.get_logger('extension-manager'))
-        self.logger = logging.get_logger(name)
-
-    def get_extension(self, name, *args, **kwargs):
-        return self.get_extension_class(name)(self, *args, **kwargs)
-
+class CLIApp(baseapp.BaseApp):
     @classmethod
     def build_argument_parser(cls):
         parser = argparse.ArgumentParser(add_help=False)
@@ -57,7 +48,7 @@ class App(extensionmanager.ExtensionManager):
             description='valid subcommands',
             help='additional help')
 
-        commands = self.get_implementations(Command)
+        commands = self.get_implementations(CommandExtension)
 
         if len(commands) == 1:
             # Single command mode
@@ -98,13 +89,7 @@ class App(extensionmanager.ExtensionManager):
         self.run(*sys.argv[1:])
 
 
-class Extension(extension.Extension):
-    def __init__(self, app):
-        super().__init__()
-        self.app = app
-
-
-class Command(Extension):
+class CommandExtension(baseapp.BaseExtension):
     help = ''
     arguments = ()
 
