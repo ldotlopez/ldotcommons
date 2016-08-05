@@ -118,3 +118,7 @@ class ExtensionManager:
 
     def get_extension(self, name, *args, **kwargs):
         return self.get_extension_class(name)(*args, **kwargs)
+
+    def get_implementations(self, cls):
+        return [x for x in self._registry.values()
+                if issubclass(x, cls)]
