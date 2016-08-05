@@ -59,14 +59,20 @@ class App(extensionmanager.ExtensionManager):
 
         commands = self.get_implementations(Command)
 
-        subargparsers = {}
-        for cmdcls in commands:
-            cmdname = cmdcls.__extension_name__
+        if len(commands) == 1:
+            # Single command mode
+            commands[0].setup_argparser(argparser)
 
-            subargparsers[cmdname] = subparser.add_parser(
-                cmdname,
-                help=cmdcls.help)
-            cmdcls.setup_argparser(subargparsers[cmdname])
+        else:
+            # Multiple command mode
+            subargparsers = {}
+            for cmdcls in commands:
+                cmdname = cmdcls.__extension_name__
+
+                subargparsers[cmdname] = subparser.add_parser(
+                    cmdname,
+                    help=cmdcls.help)
+                cmdcls.setup_argparser(subargparsers[cmdname])
 
         # Parse arguments
         args = argparser.parse_args(args)
