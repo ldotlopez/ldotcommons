@@ -3,6 +3,7 @@
 from ldotcommons import utils
 
 import os
+import pickle
 import shutil
 import tempfile
 import time
@@ -50,7 +51,7 @@ class DiskCache:
             os.makedirs(dname)
 
         with open(p, 'wb') as fh:
-            fh.write(value)
+            fh.write(pickle.dumps(value))
 
     def get(self, key):
         on_disk = self._on_disk_path(key)
@@ -69,16 +70,22 @@ class DiskCache:
 
         try:
             self._logger.debug('Using cache: {}'.format(on_disk))
-            with open(on_disk) as fh:
-                buff = fh.read()
-                fh.close()
-                return buff
-        except Exception:
-            self._logger.debug('Failed access to key {0}'.format(key))
+            with open(on_disk, 'rb') as fh:
+                buff = pickle.loads(fh.read())
+            return buff
+
+        except FileNotFoundError:
+            return None
+
+        except (OSError, IOError) as e:
+            msg = 'Failed access to key {key}: {reason}'
+            msg = msg.format(key=key, reason=str(e))
+            self._logger.error(msg)
             try:
                 os.unlink(on_disk)
             except:
                 pass
+
             return None
 
     def __del__(self):
