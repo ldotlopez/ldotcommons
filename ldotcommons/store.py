@@ -1,4 +1,8 @@
+import copy
+
+
 import yaml
+
 
 _UNDEF = object()
 
@@ -149,11 +153,11 @@ class Store:
 
         try:
             subkey, d = self._get_subdict(key, create=False)
-            return d[subkey]
+            return copy.copy(d[subkey])
 
         except (KeyNotFoundError, KeyError):
             if default != _UNDEF:
-                return default
+                return copy.copy(default)
             else:
                 raise KeyNotFoundError(key)
 
