@@ -34,10 +34,6 @@ class ValidationError(Exception):
     __str__ = __unicode__
 
 
-class ParserError(Exception):
-    pass
-
-
 def flatten_dict(d):
     if not isinstance(d, dict):
         raise TypeError()
@@ -81,8 +77,7 @@ class Store:
 
         self.update(items)
 
-    @staticmethod
-    def _process_key(key):
+    def _process_key(self, key):
         if not isinstance(key, str):
             raise IllegalKeyError(key)
 
@@ -130,7 +125,11 @@ class Store:
         for (k, v) in flatten_dict(data).items():
             self.set(k, v)
 
+    def dump(self, stream):
+        stream.write(yaml.dump(self._d))
+
     def load(self, stream):
+
         d = flatten_dict(yaml.load(stream))
         for (k, v) in d.items():
             self.set(k, v)
@@ -153,11 +152,11 @@ class Store:
 
         try:
             subkey, d = self._get_subdict(key, create=False)
-            return copy.copy(d[subkey])
+            return copy.deepcopy(d[subkey])
 
         except (KeyNotFoundError, KeyError):
             if default != _UNDEF:
-                return copy.copy(default)
+                return copy.deepcopy(default)
             else:
                 raise KeyNotFoundError(key)
 
@@ -199,9 +198,6 @@ class Store:
             return False
 
         return subns in d and isinstance(d[subns], dict)
-
-    def dump(self, fh):
-        fh.write(yaml.dump(self._d))
 
     __contains__ = has_key
     __setitem__ = get
