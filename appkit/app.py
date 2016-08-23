@@ -8,8 +8,11 @@ from appkit import logging
 
 
 class BaseApp(extensionmanager.ExtensionManager):
-    def __init__(self, name):
-        super().__init__(name, logger=logging.get_logger('extension-manager'))
+    def __init__(self, name, logger=None):
+        if logger is None:
+            logger = logging.get_logger('extension-manager')
+
+        super().__init__(name, logger=logger)
         self.logger = logging.get_logger(name)
 
     def get_extension(self, name, *args, **kwargs):
