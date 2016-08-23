@@ -39,11 +39,12 @@ class ExtensionManager:
         fullplugin = self.__name__ + ".plugins." + plugin.replace('-', '_')
         try:
             m = importlib.import_module(fullplugin)
-        except ImportError:
-            msg = "Unable to load plugin {pluginname} ({module})"
+        except ImportError as e:
+            msg = "Unable to load plugin {pluginname} ({module}): {message}"
             msg = msg.format(
                 pluginname=plugin,
-                module=fullplugin
+                module=fullplugin,
+                message=str(e)
             )
             raise PluginNotLoadedError(msg)
 
