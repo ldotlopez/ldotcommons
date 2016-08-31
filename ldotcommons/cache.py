@@ -57,36 +57,33 @@ class DiskCache:
         on_disk = self._on_disk_path(key)
         try:
             s = os.stat(on_disk)
-        except OSError:
-            return None
-        except IOError:
+        except (OSError, IOError):
             return None
 
         if self._delta >= 0 and \
            (time.mktime(time.localtime()) - s.st_mtime > self._delta):
-            self._logger.debug('Key {0} is outdated'.format(key))
+            msg = "Key «{key}» is outdated"
+            msg = msg.format(key=key)
+            self._logger.debug(msg)
             os.unlink(on_disk)
             return None
 
         try:
-            self._logger.debug('Using cache: {}'.format(on_disk))
             with open(on_disk, 'rb') as fh:
-                buff = pickle.loads(fh.read())
-            return buff
+                msg = "Found «{key}»: '{path}'"
+                msg = msg.format(key=key, path=on_disk)
+                self._logger.debug(msg)
+                return pickle.loads(fh.read())
 
-        except FileNotFoundError:
-            return None
-
-        except (OSError, IOError) as e:
-            msg = 'Failed access to key {key}: {reason}'
+        except (IOError, OSError) as e:
+            msg = "Error accessing «{key}»: {reason}"
             msg = msg.format(key=key, reason=str(e))
             self._logger.error(msg)
+
             try:
                 os.unlink(on_disk)
             except:
                 pass
-
-            return None
 
     def __del__(self):
         if self._is_tmp:
