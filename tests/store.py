@@ -7,7 +7,7 @@ import unittest
 from ldotcommons import store
 
 
-class SelectorInterfaceTest(unittest.TestCase):
+class TestStore(unittest.TestCase):
     def test_get_set(self):
         s = store.Store()
 
@@ -191,6 +191,42 @@ class SelectorInterfaceTest(unittest.TestCase):
 
         with self.assertRaises(store.IllegalKeyError):
             s.set('x..a', 1)
+
+    def test_conflict_validator(self):
+        def val(key, value):
+            return value
+
+        s = store.Store()
+
+        s.add_validator(val, None)
+        with self.assertRaises(store.ValidatorConflictError):
+            s.add_validator(val, None)
+
+    def test_multivalidators(self):
+        called = 0
+
+        def root_validator(k, v):
+            nonlocal called
+            called += 1
+            return v
+
+        def int_validator(k, v):
+            return v - 1
+
+        def str_validator(k, v):
+            return ''.join(reversed(list(iter(v))))
+
+        s = store.Store()
+        s.add_validator(root_validator)
+        s.add_validator(int_validator, 'int')
+        s.add_validator(str_validator, 'str')
+
+        s.set('int', 10)
+        s.set('str', 'xyz')
+
+        self.assertEqual(called, 2)
+        self.assertEqual(s.get('int'), 9)
+        self.assertEqual(s.get('str'), 'zyx')
 
     def test_dottet_value(self):
         s = store.Store()

@@ -34,6 +34,12 @@ class ValidationError(Exception):
     __str__ = __unicode__
 
 
+class ValidatorConflictError(Exception):
+    def __init__(self, msg, ns):
+        super().__init__(msg)
+        self.ns = ns
+
+
 def flatten_dict(d):
     if not isinstance(d, dict):
         raise TypeError()
@@ -70,7 +76,7 @@ class TypeValidator:
 class Store:
     def __init__(self, items={}, validators=[]):
         self._d = {}
-        self._validators = []
+        self._validators = {}
 
         for validator in validators:
             self.add_validator(validator)
@@ -88,8 +94,12 @@ class Store:
         return parts
 
     def _process_value(self, key, value):
-        for vfunc in self._validators:
-            value = vfunc(key, value)
+        for (ns, vfunc) in self._validators.items():
+            if (
+                    ns is None or
+                    key == ns or
+                    key.startswith(ns+".")):
+                value = vfunc(key, value)
 
         return value
 
@@ -138,8 +148,36 @@ class Store:
         for (k, v) in vars(args).items():
             self.set(k, v)
 
-    def add_validator(self, fn):
-        self._validators.append(fn)
+    def add_validator(self, fn, ns=None):
+        if not callable(fn):
+            msg = "fn argument must be a callable"
+            raise TypeError(msg)
+
+        if not (ns is None or (isinstance(ns, str) and ns != '')):
+            msg = "ns argument must be None or a non empty string"
+            raise TypeError(msg)
+
+        if ns in self._validators:
+            msg = "Another validator for «{ns}» is registered"
+            msg = msg.format(ns=ns if ns is not None else '*')
+            raise ValidatorConflictError(msg, ns=ns)
+
+        self._validators[ns] = fn
+
+        self.revalidate(ns)
+
+    def revalidate(self, ns=None):
+        if not (ns is None or (isinstance(ns, str) and str != '')):
+            msg = "ns argument must be a non empty string"
+            raise TypeError(msg)
+
+        if not (self.has_namespace(ns) or self.has_key(ns)):
+            return
+
+        nsroot = ns + "." if ns is not None else ''
+        nsdata = flatten_dict(self.get(ns))
+        for (k, v) in nsdata.items():
+            self.set(nsroot + k, v)
 
     def set(self, key, value):
         subkey, d = self._get_subdict(key, create=True)
@@ -184,6 +222,9 @@ class Store:
         return flatten_dict(self._d)
 
     def has_key(self, key):
+        if key is None:
+            return False
+
         try:
             subkey, d = self._get_subdict(key)
         except KeyNotFoundError:
@@ -192,6 +233,9 @@ class Store:
         return subkey in d
 
     def has_namespace(self, ns):
+        if ns is None:
+            return True
+
         try:
             subns, d = self._get_subdict(ns)
         except KeyNotFoundError:
