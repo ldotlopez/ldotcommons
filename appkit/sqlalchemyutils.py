@@ -4,12 +4,15 @@ from appkit import utils
 import re
 
 
-import sqlalchemy as sa
-from sqlalchemy import orm, event
-from sqlalchemy.ext import declarative
-
-
-Base = declarative.declarative_base()
+try:
+    import sqlalchemy
+    from sqlalchemy import orm, event
+    from sqlalchemy.ext import declarative
+    Base = declarative.declarative_base()
+except ImportError:
+    import warnings
+    warnings.warn("sqlalchemy not available. Try pip install sqlalchemy")
+    raise
 
 
 def _re_fn(regexp, other):
@@ -17,7 +20,7 @@ def _re_fn(regexp, other):
 
 
 def create_engine(uri='sqlite:///:memory:', echo=False):
-    engine = sa.create_engine(uri, echo=echo)
+    engine = sqlalchemy.create_engine(uri, echo=echo)
 
     # @property
     # def __monkeypatch_Base_query(self):
@@ -120,3 +123,28 @@ def glob_to_like(x, wide=False):
             x = x + '%'
 
     return x
+
+
+def install_model(session, model):
+    model.metadata.create_all(session.connection())
+
+
+def get(session, model, **kwargs):
+    query = session.query(model).filter_by(**kwargs)
+    count = query.count()
+
+    if count == 0:
+        return None
+    if count == 1:
+        return query.one()
+    else:
+        return query.all()
+
+
+def get_or_create(session, model, **kwargs):
+    o = get(session, model, **kwargs)
+
+    if o:
+        return o, False
+    else:
+        return model(**kwargs), True
