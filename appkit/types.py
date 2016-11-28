@@ -1,3 +1,23 @@
+# -*- encoding: utf-8 -*-
+
+
+import re
+
+
+#
+# Aliases
+#
+
+
+NoneType = type(None)
+RegexpType = type(re.compile(r''))
+
+
+#
+# Metaclasses
+#
+
+
 class SingletonMetaclass(type):
     def __call__(cls, *args, **kwargs):  # nopep8
         instance = getattr(cls, '_instance', None)
@@ -7,9 +27,12 @@ class SingletonMetaclass(type):
                     super(SingletonMetaclass, cls).__call__(*args, **kwargs))
         return cls._instance
 
-NoneType = type(None)
 
+#
+# Types
+#
 
+# FIXME: Null[Singleton] -> RecursiveNull[Singleton]
 class Null:
     def __getattr__(self, attr):
         return Null()
