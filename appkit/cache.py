@@ -1,6 +1,6 @@
 # -*- encoding: utf-8 -*-
 
-from ldotcommons import utils
+from appkit import utils
 
 import os
 import pickle

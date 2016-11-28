@@ -1,10 +1,12 @@
+from appkit import utils
+
+
 import re
+
 
 import sqlalchemy as sa
 from sqlalchemy import orm, event
 from sqlalchemy.ext import declarative
-
-from ldotcommons import utils
 
 
 Base = declarative.declarative_base()

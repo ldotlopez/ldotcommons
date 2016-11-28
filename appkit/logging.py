@@ -26,7 +26,7 @@ try:
 except ImportError:
     _has_color = False
 
-from ldotcommons import utils
+from appkit import utils
 
 
 LOGGING_FORMAT = "[%(levelname)s] [%(name)s] %(message)s"
