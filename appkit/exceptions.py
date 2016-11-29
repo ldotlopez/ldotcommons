@@ -1,3 +1,6 @@
+# -*- encoding: utf-8 -*-
+
+
 import builtins
 
 
@@ -15,3 +18,7 @@ class Exception(builtins.Exception):
                 raise TypeError(msg)
 
             setattr(self, k, v)
+
+
+class ExtensionManagerError(Exception):
+    pass

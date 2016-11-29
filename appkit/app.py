@@ -2,9 +2,9 @@ import argparse
 import sys
 
 
-from appkit import extension
 from appkit import extensionmanager
 from appkit import logging
+from appkit.extension import Extension
 
 
 class BaseApp(extensionmanager.ExtensionManager):
@@ -15,17 +15,28 @@ class BaseApp(extensionmanager.ExtensionManager):
         super().__init__(name, logger=logger)
         self.logger = logging.get_logger(name)
 
-    def get_extension(self, name, *args, **kwargs):
-        return self.get_extension_class(name)(self, *args, **kwargs)
+
+class ServiceAppMixin:
+    def __init__(self):
+        self.register_extension_point(Service)
+        self._services = {}
+
+    def register_extension_class(self, cls):
+        super().register_extension_class(cls)
+        if issubclass(cls, Service):
+            self._services[cls.__extension_name__] = cls(self)
+
+    def get_extension(self, extension_point, name, *args, **kwargs):
+        try:
+            return self._services[name]
+        except KeyError:
+            BaseApp.get_instance(self, extension_point, name, *args, **kwargs)
 
 
-class BaseExtension(extension.Extension):
-    def __init__(self, app):
-        super().__init__()
-        self.app = app
+class CommandlineAppMixin:
+    def __init__(self):
+        self.register_extension_point(Command)
 
-
-class CLIApp(BaseApp):
     @classmethod
     def build_argument_parser(cls):
         parser = argparse.ArgumentParser(add_help=False)
@@ -69,7 +80,7 @@ class CLIApp(BaseApp):
             description='valid subcommands',
             help='additional help')
 
-        commands = self.get_implementations(CommandExtension)
+        commands = self.get_implementations(Command)
 
         if len(commands) == 1:
             # Single command mode
@@ -110,7 +121,13 @@ class CLIApp(BaseApp):
         self.run(*sys.argv[1:])
 
 
-class CommandExtension(BaseExtension):
+class Service(Extension):
+    def __init__(self, app):
+        super().__init__()
+        self.app = app
+
+
+class Command(Extension):
     help = ''
     arguments = ()
 

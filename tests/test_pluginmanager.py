@@ -1,10 +1,16 @@
-import unittest
+# -*- encoding: utf-8 -*-
 
+
+import unittest
 import sys
 from os import path
 
-from appkit import extension
-from appkit import extensionmanager
+
+from appkit import (
+    exceptions,
+    extension,
+    extensionmanager
+)
 
 
 class ExtensionTypeA(extension.Extension):
@@ -34,17 +40,47 @@ class ExtensionC(ExtensionTypeC):
 class TestExtensionManager(unittest.TestCase):
     def test_register(self):
         em = extensionmanager.ExtensionManager('test')
+        em.register_extension_point(ExtensionTypeA)
         em.register_extension_class(ExtensionA)
 
-        e = em.get_extension_class('ext-a')
+        e = em.get_extension_class(ExtensionTypeA, 'ext-a')
         self.assertEqual(e, ExtensionA)
 
-    def test_register_incorrect_class(self):
+    def test_register_extension_as_extension_point(self):
+        em = extensionmanager.ExtensionManager('test')
+        with self.assertRaises(TypeError):
+            em.register_extension_point(ExtensionA)
+
+    def test_register_already_registered_ext_point(self):
+        em = extensionmanager.ExtensionManager('test')
+        em.register_extension_point(ExtensionTypeA)
+        with self.assertRaises(exceptions.ExtensionManagerError):
+            em.register_extension_point(ExtensionTypeA)
+
+    def test_register_subclass_of_previous_ext_point(self):
+        class FooType(ExtensionTypeA):
+            pass
+
+        em = extensionmanager.ExtensionManager('test')
+        em.register_extension_point(ExtensionTypeA)
+        with self.assertRaises(exceptions.ExtensionManagerError):
+            em.register_extension_point(FooType)
+
+    def test_register_superclass_of_previous_ext_point(self):
+        class FooType(ExtensionTypeA):
+            pass
+
+        em = extensionmanager.ExtensionManager('test')
+        em.register_extension_point(FooType)
+        with self.assertRaises(exceptions.ExtensionManagerError):
+            em.register_extension_point(ExtensionTypeA)
+
+    def test_register_extension_class_with_unrelated_type(self):
         em = extensionmanager.ExtensionManager('test')
         with self.assertRaises(TypeError):
             em.register_extension_class(str)
 
-    def test_register_missing_name(self):
+    def test_register_extension_class_with_missing_name(self):
         class NoNameExtension(extension.Extension):
             pass
 
@@ -52,19 +88,21 @@ class TestExtensionManager(unittest.TestCase):
         with self.assertRaises(TypeError):
             em.register_extension_class(NoNameExtension)
 
-    def test_collision(self):
-        class FooExtension(ExtensionA):
+    def test_register_extension_class_with_colliding_name(self):
+        class FooExtension(ExtensionTypeA):
             __extension_name__ = 'xyz'
 
-        class BarExtension(ExtensionB):
+        class BarExtension(ExtensionTypeA):
             __extension_name__ = 'xyz'
 
         em = extensionmanager.ExtensionManager('test')
+        em.register_extension_point(ExtensionTypeA)
+
         em.register_extension_class(FooExtension)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(exceptions.ExtensionManagerError):
             em.register_extension_class(BarExtension)
 
-    def test_instances(self):
+    def test_get_extension(self):
         class Foo(extension.Extension):
             __extension_name__ = 'foo'
 
@@ -72,12 +110,13 @@ class TestExtensionManager(unittest.TestCase):
                 self.x = x
 
         em = extensionmanager.ExtensionManager('test')
+        em.register_extension_point(extension.Extension)
         em.register_extension_class(Foo)
 
-        e = em.get_extension('foo', 1)
+        e = em.get_extension(extension.Extension, 'foo', 1)
         self.assertEqual(e.x, 1)
 
-        e = em.get_extension('foo', 'x')
+        e = em.get_extension(extension.Extension, 'foo', 'x')
         self.assertEqual(e.x, 'x')
 
     def test_load_plugin(self):
@@ -86,58 +125,13 @@ class TestExtensionManager(unittest.TestCase):
             path.dirname(path.realpath(__file__)) + '/plugins/'
         )
         em = extensionmanager.ExtensionManager('testapp')
+        em.register_extension_point(extension.Extension)
         em.load_plugin('meh')
 
         with self.assertRaises(extensionmanager.PluginNotLoadedError):
             em.load_plugin('meh2')
 
         sys.path = pathbck.copy()
-
-    # def test_same_name_no_collission(self):
-    #     class ExtSubTypeA(extension.Extension):
-    #         pass
-
-    #     class ExtSubTypeB(extension.Extension):
-    #         pass
-
-    #     class ExtA(ExtSubTypeA):
-    #         __extension_name__ = 'foo'
-
-    #     class ExtB(ExtSubTypeB):
-    #         __extension_name__ = 'foo'
-
-    #     em = extensionmanager.ExtensionManager('test')
-    #     em.register_extension_class(ExtA)
-    #     em.register_extension_class(ExtB)
-
-    #     self.assertEqual(
-    #         em.get_extension_class('foo'),
-    #         ExtA)
-
-    #     self.assertEqual(
-    #         em.get_extension_class(ExtSubTypeB, 'foo'),
-    #         ExtB)
-
-    # def test_partial_collision(self):
-    #     class ExtSubTypeA(extension.Extension):
-    #         pass
-
-    #     class ExtSubTypeB(extension.Extension):
-    #         pass
-
-    #     class ExtSubTypeC(extension.Extension):
-    #         pass
-
-    #     class Ext1(ExtSubTypeA, ExtSubTypeB):
-    #         __extension_name__ = 'foo'
-
-    #     class Ext2(ExtSubTypeB, ExtSubTypeC):
-    #         __extension_name__ = 'foo'
-
-    #     em = extensionmanager.ExtensionManager('test')
-    #     em.register_extension_class(Ext1)
-    #     with self.assertRaises(ValueError):
-    #         em.register_extension_class(Ext2)
 
 if __name__ == '__main__':
     unittest.main()
