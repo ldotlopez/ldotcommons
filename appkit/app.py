@@ -22,7 +22,7 @@ class ServiceAppMixin:
         self._services = {}
 
     def register_extension_class(self, cls):
-        super().register_extension_class(cls)
+        BaseApp.register_extension_class(self, cls)
         if issubclass(cls, Service):
             self._services[cls.__extension_name__] = cls(self)
 
