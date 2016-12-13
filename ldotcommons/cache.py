@@ -29,19 +29,19 @@ class NullCache:
 class DiskCache:
     def __init__(self, basedir=None, delta=-1, hashfunc=hashfunc,
                  logger=None):
+        self.basedir = basedir
+        self.delta = delta
         self._is_tmp = False
-        self._basedir = basedir
-        self._delta = delta
         self._logger = logger or utils.NullSingleton()
 
-        if not self._basedir:
-            self._basedir = tempfile.mkdtemp()
+        if not self.basedir:
+            self.basedir = tempfile.mkdtemp()
             self._is_tmp = True
 
     def _on_disk_path(self, key):
         hashed = hashfunc(key)
         return os.path.join(
-            self._basedir, hashed[:0], hashed[:1], hashed[:2], hashed)
+            self.basedir, hashed[:0], hashed[:1], hashed[:2], hashed)
 
     def set(self, key, value):
         p = self._on_disk_path(key)
@@ -60,8 +60,8 @@ class DiskCache:
         except (OSError, IOError):
             return None
 
-        if self._delta >= 0 and \
-           (time.mktime(time.localtime()) - s.st_mtime > self._delta):
+        if self.delta >= 0 and \
+           (time.mktime(time.localtime()) - s.st_mtime > self.delta):
             msg = "Key «{key}» is outdated"
             msg = msg.format(key=key)
             self._logger.debug(msg)
@@ -87,4 +87,4 @@ class DiskCache:
 
     def __del__(self):
         if self._is_tmp:
-            shutil.rmtree(self._basedir)
+            shutil.rmtree(self.basedir)
