@@ -183,78 +183,66 @@ class AIOHttpFetcher:
         return buff
 
 
-class AIOHttpFetcherWithAcessControl:
-    class Timeout(aiohttp.Timeout):
-        def __init__(self, t):
-            super().__init__(t)
-            self.t = t
+class AsyncFetcher:
+    def __init__(self, logger=None, cache=None, max_requests=1,
+                 timeout=-1,
+                 **session_options):
+        self._logger = logger
+        self._cache = cache
+        self._semaphore = asyncio.Semaphore(max_requests)
+        self._session = aiohttp.ClientSession(**session_options)
 
-        def __enter__(self, *args, **kwargs):
-            if self.t:
-                return super().__enter__(*args, **kwargs)
-
-        def __exit__(self, *args, **kwargs):
-            if self.t:
-                return super().__exit__(*args, **kwargs)
-
-    def __init__(self,
-                 logger=None,
-                 enable_cache=False, cache_delta=-1,
-                 max_reqs=1,
-                 timeout=0,
-                 **options):
-
-        self.logger = logger
-
-        # Setup cache
-        if enable_cache:
-            cache_path = utils.user_path(
-                'cache', 'aiohttpfetcher', create=True, is_folder=True
-            )
-
-            self.cache = cache.DiskCache(
-                basedir=cache_path, delta=cache_delta,
-                logger=self.logger
-            )
-
-            msg = "{clsname} using cachepath '{path}'"
-            msg = msg.format(clsname=self.__class__.__name__, path=cache_path)
-            self.logger.debug(msg)
-        else:
-            self.cache = None
-
-        self.cache_delta = cache_delta
-        self.timeout = timeout
-        self.options = options.copy()
-        self.semaphore = asyncio.Semaphore(max_reqs)
-
-        self.client = aiohttp.ClientSession(**self.options)
+    @property
+    def session(self):
+        return self._session
 
     @asyncio.coroutine
-    def fetch(self, url, **options):
-        if self.cache:
-            buff = self.cache.get(url)
+    def fetch(self, url, **request_options):
+        resp, content = yield from self.fetch_full(url,
+                                                   skip_cache=skip_cache,
+                                                   timeout=timeout,
+                                                   **request_options)
+
+        return content
+
+    @asyncio.coroutine
+    def fetch_full(self, url, skip_cache=False, timeout=0, **request_options):
+        use_cache = not skip_cache and self._cache
+
+        if use_cache:
+            buff = self._cache.get(url)
             if buff:
-                return buff
+                return None, buff
 
-        timeout = options.pop('timeout', None) or self.timeout
-        opts = options or self.options
-
-        with (yield from self.semaphore):
-            with AIOHttpFetcherWithAcessControl.Timeout(timeout):
-                if self.logger:
+        with (yield from self._semaphore):
+            with AsyncTimeout(timeout):
+                if self._logger:
                     msg = "Fetching «{url}»"
                     msg = msg.format(url=url)
-                    self.logger.info(msg)
+                    self._logger.info(msg)
 
-                resp = yield from self.client.get(url, **opts)
+                resp = yield from self.session.get(url, **request_options)
                 buff = yield from resp.content.read()
                 yield from resp.release()
 
-        if self.cache:
-            self.cache.set(url, buff)
+        if use_cache:
+            self._cache.set(url, buff)
 
-        return buff
+        return resp, buff
 
     def __del__(self):
-        self.client.close()
+        self.session.close()
+
+
+class AsyncTimeout(aiohttp.Timeout):
+    def __init__(self, t):
+        super().__init__(t)
+        self.t = t
+
+    def __enter__(self, *args, **kwargs):
+        if self.t > 0:
+            return super().__enter__(*args, **kwargs)
+
+    def __exit__(self, *args, **kwargs):
+        if self.t > 0:
+            return super().__exit__(*args, **kwargs)
