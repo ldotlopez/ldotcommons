@@ -95,14 +95,14 @@ class ExtensionManager:
         if not issubclass(cls, Extension):
             msg = ("Class {cls} is not a valid extension "
                    "(must a subclass of appkit.app.Extension)")
-            msg = msg.format(cls=cls.__name__)
+            msg = msg.format(cls=cls.__module__+'.'+cls.__name__)
             raise TypeError(msg)
 
         # Check for mandatory __extension_name__' attr
         if not hasattr(cls, '__extension_name__'):
             msg = ("Class {cls} is not a valid extension "
                    "(must define a __extension_name__' attribute)")
-            msg = msg.format(cls=cls.__name__)
+            msg = msg.format(cls=cls.__module__+'.'+cls.__name__)
             raise TypeError(msg)
 
         # Search for matching extension point
@@ -114,7 +114,7 @@ class ExtensionManager:
 
         if extension_point is None:
             msg = "Class {cls} doesn't match any extension point"
-            msg = msg.format(cls=cls.__name__)
+            msg = msg.format(cls=cls.__module__+'.'+cls.__name__)
             raise exceptions.ExtensionManagerError(msg)
 
         # Check for name colision
@@ -158,7 +158,8 @@ class ExtensionManager:
 
     def get_extension_class(self, extension_point, name):
         if not issubclass(extension_point, Extension):
-            msg = "extension_point must be a subclass of appkit.extensionmanager.Extension."
+            msg = ("extension_point must be a subclass of "
+                   "appkit.extensionmanager.Extension.")
             raise TypeError(msg)
 
         if not isinstance(name, str):
@@ -185,4 +186,9 @@ class ExtensionManager:
         return self.get_extension_class(extension_point, name)(*args, **kwargs)
 
     def get_implementations(self, extension_point):
+        if extension_point not in self._registry:
+            msg = "{cls} is not a valid extension point"
+            msg = msg.format(cls=extension_point.__name__)
+            raise TypeError(msg)
+
         return list(self._registry[extension_point].values())
