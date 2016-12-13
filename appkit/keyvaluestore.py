@@ -1,11 +1,12 @@
-from appkit.sqlalchemy import create_session, declarative
+# -*- encoding: utf-8 -*-
 
+from appkit.db import sqlalchemyutils as sautils
 
 import json
 import pickle
 
-
-from sqlalchemy import Column, String, Integer
+import sqlalchemy
+from sqlalchemy.ext import declarative
 from sqlalchemy.orm import exc
 
 
@@ -37,10 +38,11 @@ def keyvaluemodel(name, base, extra_dict={}):
 
 
 class _KeyValueItem:
-    id = Column(Integer, primary_key=True)
-    key = Column(String, name='key', nullable=False)
-    _value = Column(String, name='value')
-    _typ = Column(String(), name='type', default='str', nullable=False)
+    id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
+    key = sqlalchemy.Column(sqlalchemy.String, name='key', nullable=False)
+    _value = sqlalchemy.Column(sqlalchemy.String, name='value')
+    _typ = sqlalchemy.Column(sqlalchemy.String, name='type', default='str',
+                             nullable=False)
 
     _resolved = _UNDEF
 
@@ -125,7 +127,7 @@ class KeyValueManager:
                 msg = msg.format(model=repr(model))
                 raise TypeError(msg)
 
-            session = create_session(engine=model.metadata.bind)
+            session = sautils.create_session(engine=model.metadata.bind)
 
         self._sess = session
         self._model = model
