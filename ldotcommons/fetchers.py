@@ -199,8 +199,6 @@ class AsyncFetcher:
     @asyncio.coroutine
     def fetch(self, url, **request_options):
         resp, content = yield from self.fetch_full(url,
-                                                   skip_cache=skip_cache,
-                                                   timeout=timeout,
                                                    **request_options)
 
         return content
