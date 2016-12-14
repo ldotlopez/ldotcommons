@@ -498,12 +498,13 @@ def parse_size(string):
               for (idx, key) in enumerate(suffixes)}
 
     string = string.replace(',', '.')
-    m = re.search(r'^([0-9\.]+)\s*([kmgtphezy]b?)?$', string.lower())
+    m = re.search(r'^(?P<value>[0-9\.]+)\s*((?P<mod>[kmgtphezy])b?)?$',
+                  string.lower())
     if not m:
         raise ValueError()
 
-    value = m.group(1)
-    mod = m.group(2)
+    value = m.groupdict().get('value')
+    mod = m.groupdict().get('mod')
 
     if '.' in value:
         value = float(value)
@@ -526,7 +527,7 @@ def parse_date(string):
     if isinstance(string, int):
         return string
 
-    string = re.sub(r'[:\.\-\s/]', ' ', string)
+    string = re.sub(r'[:\.\-\s/]', ' ', string.strip())
 
     for (regexp, fmt) in _table:
         if not re.search(regexp, string):
