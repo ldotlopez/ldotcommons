@@ -39,7 +39,7 @@ class TestInmutableDict(unittest.TestCase):
             x['foo'] = 3
 
 
-class TestSizeParsing(unittest.TestCase):
+class TestParseSize(unittest.TestCase):
     def test_simple(self):
         self.assertEqual(parse_size('8'), 8)
         self.assertEqual(parse_size('1234'), 1234)
@@ -74,6 +74,8 @@ class TestSizeParsing(unittest.TestCase):
         self.assertEqual(parse_size('14 Z'), 14*10**21)
         self.assertEqual(parse_size('15 y'), 15*10**24)
         self.assertEqual(parse_size('16Y'), 16*10**24)
+        self.assertEqual(parse_size('1.2 Mb'), 1.2*10**6)
+        self.assertEqual(parse_size('1,2Gb'), 1.2*10**9)
 
 
 class TestTimeParsing(unittest.TestCase):
