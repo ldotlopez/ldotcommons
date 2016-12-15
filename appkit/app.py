@@ -7,6 +7,27 @@ from appkit import logging
 from appkit.extension import Extension
 
 
+class Service(Extension):
+    def __init__(self, app):
+        super().__init__()
+        self.app = app
+
+
+class Command(Extension):
+    help = ''
+    arguments = ()
+
+    @classmethod
+    def setup_argparser(cls, cmdargparser):
+        arguments = getattr(cls, 'arguments')
+        for argument in arguments:
+            args, kwargs = argument()
+            cmdargparser.add_argument(*args, **kwargs)
+
+    def run(self, args):
+        raise NotImplementedError()
+
+
 class BaseApp(extensionmanager.ExtensionManager):
     def __init__(self, name, logger=None):
         if logger is None:
@@ -17,13 +38,15 @@ class BaseApp(extensionmanager.ExtensionManager):
 
 
 class ServiceAppMixin:
+    SERVICE_EXTENSION_POINT = Service
+
     def __init__(self):
-        self.register_extension_point(Service)
+        self.register_extension_point(self.__class__.SERVICE_EXTENSION_POINT)
         self._services = {}
 
     def register_extension_class(self, cls):
         BaseApp.register_extension_class(self, cls)
-        if issubclass(cls, Service):
+        if issubclass(cls, self.__class__.SERVICE_EXTENSION_POINT):
             self._services[cls.__extension_name__] = cls(self)
 
     def get_extension(self, extension_point, name, *args, **kwargs):
@@ -34,8 +57,10 @@ class ServiceAppMixin:
 
 
 class CommandlineAppMixin:
+    COMMAND_EXTENSION_POINT = Command
+
     def __init__(self):
-        self.register_extension_point(Command)
+        self.register_extension_point(self.__class__.COMMAND_EXTENSION_POINT)
 
     @classmethod
     def build_argument_parser(cls):
@@ -80,7 +105,8 @@ class CommandlineAppMixin:
             description='valid subcommands',
             help='additional help')
 
-        commands = self.get_implementations(Command)
+        commands = self.get_implementations(
+            self.__class__.COMMAND_EXTENSION_POINT)
 
         if len(commands) == 1:
             # Single command mode
@@ -119,27 +145,6 @@ class CommandlineAppMixin:
 
     def run_from_args(self):
         self.run(*sys.argv[1:])
-
-
-class Service(Extension):
-    def __init__(self, app):
-        super().__init__()
-        self.app = app
-
-
-class Command(Extension):
-    help = ''
-    arguments = ()
-
-    @classmethod
-    def setup_argparser(cls, cmdargparser):
-        arguments = getattr(cls, 'arguments')
-        for argument in arguments:
-            args, kwargs = argument()
-            cmdargparser.add_argument(*args, **kwargs)
-
-    def run(self, args):
-        raise NotImplementedError()
 
 
 class CommandArgumentError(Exception):
