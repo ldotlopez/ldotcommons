@@ -166,6 +166,12 @@ class ExtensionManager:
             msg = "name must be a str"
             raise TypeError(msg)
 
+        if extension_point not in self._registry:
+            msg = "Invalid extension_point '{cls}'"
+            msg = msg.format(cls=extension_point.__module__ +
+                             '.' + extension_point.__name__)
+            raise TypeError(msg)
+
         return self._registry[extension_point][name]
 
         # if issubclass(cls, extension.Service):
