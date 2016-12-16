@@ -52,10 +52,16 @@ class ServiceAppMixin:
             self._services[cls.__extension_name__] = cls(self)
 
     def get_extension(self, extension_point, name, *args, **kwargs):
-        try:
+        assert isinstance(extension_point, type)
+        assert isinstance(name, str)
+
+        # Check requested extension is a service
+        if extension_point == self.__class__.SERVICE_EXTENSION_POINT and \
+           name in self._services:
             return self._services[name]
-        except KeyError:
-            return super().get_extension(extension_point, name, *args, **kwargs)
+
+        return super().get_extension(extension_point, name,
+                                     *args, **kwargs)
 
 
 class CommandlineAppMixin:
