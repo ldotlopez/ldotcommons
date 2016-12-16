@@ -61,8 +61,10 @@ class ExtensionManager:
 
         for ext_point in self._registry:
             if check_subclass(basecls, ext_point):
-                msg = "Extension point {cls1} is a subclass of {cls2} (or viceversa)"
-                msg = msg.format(cls1=basecls.__name__, cls2=ext_point.__name__)
+                msg = ("Extension point {cls1} is a subclass of {cls2} "
+                       "(or viceversa)")
+                msg = msg.format(cls1=basecls.__name__,
+                                 cls2=ext_point.__name__)
                 raise exceptions.ExtensionManagerError(msg)
 
         self._registry[basecls] = {}
@@ -156,4 +158,4 @@ class ExtensionManager:
             msg = msg.format(cls=extension_point.__name__)
             raise TypeError(msg)
 
-        return list(self._registry[extension_point].values())
+        return self._registry[extension_point].copy()

@@ -112,7 +112,7 @@ class CommandlineAppMixin:
         argparser = self.build_argument_parser()
 
         commands = self.get_implementations(
-            self.__class__.COMMAND_EXTENSION_POINT)
+            self.__class__.COMMAND_EXTENSION_POINT).values()
 
         if len(commands) == 1:
             # Single command mode
