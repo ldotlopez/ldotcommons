@@ -40,7 +40,8 @@ class BaseApp(extensionmanager.ExtensionManager):
 class ServiceAppMixin:
     SERVICE_EXTENSION_POINT = Service
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.register_extension_point(self.__class__.SERVICE_EXTENSION_POINT)
         self._services = {}
 
@@ -53,13 +54,14 @@ class ServiceAppMixin:
         try:
             return self._services[name]
         except KeyError:
-            BaseApp.get_instance(self, extension_point, name, *args, **kwargs)
+            return super().get_extension(extension_point, name, *args, **kwargs)
 
 
 class CommandlineAppMixin:
     COMMAND_EXTENSION_POINT = Command
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.register_extension_point(self.__class__.COMMAND_EXTENSION_POINT)
 
     @classmethod
