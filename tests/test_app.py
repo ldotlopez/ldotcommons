@@ -63,5 +63,26 @@ class TestApp(unittest.TestCase):
             a.get_extension(app.Service, 'test').x,
             1)
 
+    def test_command_line_app(self):
+        class TestCommand(app.Command):
+            __extension_name__ = 'foo'
+
+            arguments = [
+                app.cliargument('nums', nargs='+')
+            ]
+
+            def run(args):
+                return sum([int(x) for x in args.nums])
+
+        class TestApp(app.CommandlineAppMixin, app.BaseApp):
+            pass
+
+        a = TestApp('foo')
+        a.register_extension_class(TestCommand)
+
+        self.assertEqual(
+            a.run('1', '2', '3'),
+            6)
+
 if __name__ == '__main__':
     unittest.main()

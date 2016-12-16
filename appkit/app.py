@@ -1,4 +1,5 @@
 import argparse
+import collections
 import sys
 
 
@@ -99,13 +100,10 @@ class CommandlineAppMixin:
         return parser
 
     def run(self, *args):
-        # Build full argument parser
+        assert (isinstance(args, collections.Iterable))
+        assert all([isinstance(x, str) for x in args])
+
         argparser = self.build_argument_parser()
-        subparser = argparser.add_subparsers(
-            title='subcommands',
-            dest='subcommand',
-            description='valid subcommands',
-            help='additional help')
 
         commands = self.get_implementations(
             self.__class__.COMMAND_EXTENSION_POINT)
@@ -113,8 +111,16 @@ class CommandlineAppMixin:
         if len(commands) == 1:
             # Single command mode
             commands[0].setup_argparser(argparser)
+            args = argparser.parse_args(args)
+            ext = commands[0]
 
         else:
+            subparser = argparser.add_subparsers(
+                title='subcommands',
+                dest='subcommand',
+                description='valid subcommands',
+                help='additional help')
+
             # Multiple command mode
             subargparsers = {}
             for cmdcls in commands:
@@ -125,25 +131,47 @@ class CommandlineAppMixin:
                     help=cmdcls.help)
                 cmdcls.setup_argparser(subargparsers[cmdname])
 
-        # Parse arguments
-        args = argparser.parse_args(args)
-        if not args.subcommand:
-            argparser.print_help()
-            return
+            args = argparser.parse_args(args)
+            if not args.subcommand:
+                argparser.print_help()
+                return
 
-        # Get extension instances and extract its argument names
-        ext = self.get_extension(args.subcommand)
+            # Get extension instances and extract its argument names
+            ext = self.get_extension(self.__class__.COMMAND_EXTENSION_POINT,
+                                     args.subcommand)
+
         try:
             return ext.run(args)
         except CommandArgumentError as e:
             subargparsers[args.subcommand].print_help()
             print("\nError message: {}".format(e), file=sys.stderr)
 
-        # except (arroyo.exc.BackendError,
-        #         arroyo.exc.NoImplementationError) as e:
-        #     self.logger.critical(e)
-
         raise NotImplementedError()
+
+    # def run_from_args(self, command_line_arguments=sys.argv[1:]):
+
+
+    #     # Parse arguments
+    #     args = argparser.parse_args(command_line_arguments)
+    #     if not args.subcommand:
+    #         argparser.print_help()
+    #         return
+
+    #     # Get extension instances and extract its argument names
+    #     ext = self.get_extension(extension.Command, args.subcommand)
+    #     try:
+    #         ext.run(args)
+
+    #     except arroyo.exc.PluginArgumentError as e:
+    #         subargparsers[args.subcommand].print_help()
+    #         print("\nError message: {}".format(e), file=sys.stderr)
+
+    #     except (arroyo.exc.BackendError,
+    #             arroyo.exc.NoImplementationError,
+    #             arroyo.exc.FatalError) as e:
+    #         self.logger.critical(e)
+
+
 
     def run_from_args(self):
         self.run(*sys.argv[1:])
