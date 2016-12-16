@@ -40,7 +40,8 @@ class ExtensionManager:
         self._registry = {}
 
         # Big warning: We cant preregister Extension as extension_point
-        # because we can't have parents and childrens registered at the same time.
+        # because we can't have parents and childrens registered at the same
+        # time.
         # DON'T uncomment the next line
         #
         # self.register_extension_point(Extension)
@@ -128,34 +129,6 @@ class ExtensionManager:
 
         self._registry[extension_point][cls.__extension_name__] = cls
 
-        # Plain registry type
-        #
-        # if cls.__extension_name__ in self._registry:
-        #     msg = ("Class {cls} can't be registered, name already registered "
-        #            "by {other}")
-        #     msg = msg.format(
-        #         cls=cls.__name__,
-        #         other=self._registry[cls.__extension_name__].__name__)
-        #     raise ValueError(msg)
-
-        # self._registry[cls.__extension_name__] = cls
-
-        # Support for multiple extensions sharing the same name
-        #
-        # Check for conflicts
-        # keys = set([(basecls, cls.__extension_name__)
-        #            for basecls in cls.__bases__])
-        # conflicts = set(self._registry).intersection(keys)
-        # if conflicts:
-        #     msg = ("Class {cls} can't be registered, there are conflicts: "
-        #            "{conflicts}")
-        #     msg = msg.format(cls=cls.__name__, conflicts=repr(conflicts))
-        #     raise ValueError(msg)
-
-        # self._registry.update({
-        #     k: cls for k in keys
-        # })
-
     def get_extension_class(self, extension_point, name):
         if not issubclass(extension_point, Extension):
             msg = ("extension_point must be a subclass of "
@@ -173,20 +146,6 @@ class ExtensionManager:
             raise TypeError(msg)
 
         return self._registry[extension_point][name]
-
-        # if issubclass(cls, extension.Service):
-        #     if name in self._services:
-        #         msg = ("Service '{name}' already registered by "
-        #                "'{cls}'")
-        #         msg = msg.format(
-        #             name=name,
-        #             cls=type(self._services[name]))
-        #         self.logger.critical(msg)
-        #     else:
-        #         try:
-        #             self._services[cls] = cls(self)
-        #         except arroyo.exc.PluginArgumentError as e:
-        #             self.logger.critical(str(e))
 
     def get_extension(self, extension_point, name, *args, **kwargs):
         return self.get_extension_class(extension_point, name)(*args, **kwargs)
