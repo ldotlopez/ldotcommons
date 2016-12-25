@@ -1,3 +1,4 @@
+import abc
 import argparse
 import collections
 import sys
@@ -25,7 +26,8 @@ class Command(Extension):
             args, kwargs = argument()
             cmdargparser.add_argument(*args, **kwargs)
 
-    def run(self, args):
+    @abc.abstractmethod
+    def run(self, app, args):
         raise NotImplementedError()
 
 
@@ -62,6 +64,9 @@ class ServiceAppMixin:
 
         return super().get_extension(extension_point, name,
                                      *args, **kwargs)
+
+    def get_service(self, name):
+        return self.get_extension(self.__class__.SERVICE_EXTENSION_POINT, name)
 
 
 class CommandlineAppMixin:
@@ -147,7 +152,7 @@ class CommandlineAppMixin:
                                      args.subcommand)
 
         try:
-            return ext.run(args)
+            return ext.run(self, args)
         except CommandArgumentError as e:
             subargparsers[args.subcommand].print_help()
             print("\nError message: {}".format(e), file=sys.stderr)
