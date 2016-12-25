@@ -116,8 +116,8 @@ class CommandlineAppMixin:
 
         argparser = self.build_argument_parser()
 
-        commands = self.get_implementations(
-            self.__class__.COMMAND_EXTENSION_POINT).values()
+        commands = list(self.get_implementations(
+            self.__class__.COMMAND_EXTENSION_POINT).values())
 
         if len(commands) == 1:
             # Single command mode
@@ -158,31 +158,6 @@ class CommandlineAppMixin:
             print("\nError message: {}".format(e), file=sys.stderr)
 
         raise NotImplementedError()
-
-    # def run_from_args(self, command_line_arguments=sys.argv[1:]):
-
-
-    #     # Parse arguments
-    #     args = argparser.parse_args(command_line_arguments)
-    #     if not args.subcommand:
-    #         argparser.print_help()
-    #         return
-
-    #     # Get extension instances and extract its argument names
-    #     ext = self.get_extension(extension.Command, args.subcommand)
-    #     try:
-    #         ext.run(args)
-
-    #     except arroyo.exc.PluginArgumentError as e:
-    #         subargparsers[args.subcommand].print_help()
-    #         print("\nError message: {}".format(e), file=sys.stderr)
-
-    #     except (arroyo.exc.BackendError,
-    #             arroyo.exc.NoImplementationError,
-    #             arroyo.exc.FatalError) as e:
-    #         self.logger.critical(e)
-
-
 
     def run_from_args(self):
         self.run(*sys.argv[1:])

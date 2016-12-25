@@ -42,7 +42,7 @@ class ExtensionManager:
         # Big warning: We cant preregister Extension as extension_point
         # because we can't have parents and childrens registered at the same
         # time.
-        # DON'T uncomment the next line
+        # DON'T uncomment the next line keep it as a reminder
         #
         # self.register_extension_point(Extension)
 
