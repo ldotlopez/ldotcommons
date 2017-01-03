@@ -7,6 +7,10 @@ import yaml
 _UNDEF = object()
 
 
+class FormatError(Exception):
+    pass
+
+
 class IllegalKeyError(ValueError):
     def __unicode__(self):
         return "Illegal key: '{}'".format(self.args[0])
@@ -129,8 +133,7 @@ class Store:
         stream.write(yaml.dump(self._d))
 
     def load(self, stream):
-
-        d = flatten_dict(yaml.load(stream))
+        d = flatten_dict(yaml.load(stream.read()))
         for (k, v) in d.items():
             self.set(k, v)
 

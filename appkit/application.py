@@ -2,20 +2,18 @@ import abc
 import argparse
 import collections
 import sys
+import warnings
 
 
 from appkit import extensionmanager
 from appkit import logging
-from appkit.extension import Extension
 
 
-class Service(Extension):
-    def __init__(self, app):
-        super().__init__()
-        self.app = app
+class Extension(extensionmanager.Extension):
+    pass
 
 
-class Command(Extension):
+class Command(extensionmanager.Extension):
     help = ''
     arguments = ()
 
@@ -27,12 +25,21 @@ class Command(Extension):
             cmdargparser.add_argument(*args, **kwargs)
 
     @abc.abstractmethod
-    def run(self, app, args):
+    def execute(self, app, args):
         raise NotImplementedError()
 
 
-class BaseApp(extensionmanager.ExtensionManager):
-    def __init__(self, name, logger=None):
+class Service(extensionmanager.Extension):
+    def __init__(self, app):
+        super().__init__()
+        self.app = app
+
+
+class BaseApplication(extensionmanager.ExtensionManager):
+    def __init__(self, name, pluginpath=None, logger=None):
+        if pluginpath is not None:
+            warnings.warn('pluginpath is ignored')
+
         if logger is None:
             logger = logging.get_logger('extension-manager')
 
@@ -40,7 +47,7 @@ class BaseApp(extensionmanager.ExtensionManager):
         self.logger = logging.get_logger(name)
 
 
-class ServiceAppMixin:
+class ServiceApplicationMixin:
     SERVICE_EXTENSION_POINT = Service
 
     def __init__(self, *args, **kwargs):
@@ -49,7 +56,7 @@ class ServiceAppMixin:
         self._services = {}
 
     def register_extension_class(self, cls):
-        BaseApp.register_extension_class(self, cls)
+        BaseApplication.register_extension_class(self, cls)
         if issubclass(cls, self.__class__.SERVICE_EXTENSION_POINT):
             self._services[cls.__extension_name__] = cls(self)
 
@@ -69,7 +76,7 @@ class ServiceAppMixin:
         return self.get_extension(self.__class__.SERVICE_EXTENSION_POINT, name)
 
 
-class CommandlineAppMixin:
+class CommandlineApplicationMixin:
     COMMAND_EXTENSION_POINT = Command
 
     def __init__(self, *args, **kwargs):
@@ -110,20 +117,29 @@ class CommandlineAppMixin:
 
         return parser
 
-    def run(self, *args):
+    def get_commands(self):
+        yield from self.get_extensions_for(
+            self.__class__.COMMAND_EXTENSION_POINT)
+
+    def execute_command(self, command_name, arguments):
+        ext = self.get_extension(
+            self.__class__.COMMAND_EXTENSION_POINT,
+            command_name)
+
+        return ext.execute(self, arguments)
+
+    def execute(self, *args):
         assert (isinstance(args, collections.Iterable))
         assert all([isinstance(x, str) for x in args])
 
         argparser = self.build_argument_parser()
-
-        commands = list(self.get_implementations(
-            self.__class__.COMMAND_EXTENSION_POINT).values())
+        commands = list(self.get_commands())
 
         if len(commands) == 1:
             # Single command mode
-            commands[0].setup_argparser(argparser)
+            (cmdname, cmdext) = commands[0]
+            cmdext.setup_argparser(argparser)
             args = argparser.parse_args(args)
-            ext = commands[0]
 
         else:
             subparser = argparser.add_subparsers(
@@ -134,33 +150,32 @@ class CommandlineAppMixin:
 
             # Multiple command mode
             subargparsers = {}
-            for cmdcls in commands:
-                cmdname = cmdcls.__extension_name__
-
+            for (cmdname, cmdext) in commands:
                 subargparsers[cmdname] = subparser.add_parser(
                     cmdname,
-                    help=cmdcls.help)
-                cmdcls.setup_argparser(subargparsers[cmdname])
+                    help=cmdext.help)
+                cmdext.setup_argparser(subargparsers[cmdname])
 
             args = argparser.parse_args(args)
             if not args.subcommand:
                 argparser.print_help()
                 return
 
-            # Get extension instances and extract its argument names
-            ext = self.get_extension(self.__class__.COMMAND_EXTENSION_POINT,
-                                     args.subcommand)
+            cmdname = args.subcommand
 
         try:
-            return ext.run(self, args)
+            self.execute_command(cmdname, args)
+
         except CommandArgumentError as e:
-            subargparsers[args.subcommand].print_help()
+            if len(commands) > 1:
+                subargparsers[args.subcommand].print_help()
+            else:
+                argparser.print_help()
+
             print("\nError message: {}".format(e), file=sys.stderr)
 
-        raise NotImplementedError()
-
-    def run_from_args(self):
-        self.run(*sys.argv[1:])
+    def execute_from_command_line(self):
+        self.execute(*sys.argv[1:])
 
 
 class CommandArgumentError(Exception):

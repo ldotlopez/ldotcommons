@@ -6,18 +6,10 @@ import re
 import warnings
 
 
-from appkit import (
-    exceptions,
-    types
-)
-from appkit.extension import Extension
+from appkit import types
 
 
-class PluginNotLoadedError(Exception):
-    pass
-
-
-class PluginWithoutExtensionsError(Exception):
+class Extension:
     pass
 
 
@@ -46,28 +38,11 @@ class ExtensionManager:
         #
         # self.register_extension_point(Extension)
 
-    def register_extension_point(self, basecls):
-        def check_subclass(a, b):
-            return issubclass(a, b) or issubclass(b, a)
-
-        if hasattr(basecls, '__extension_name__'):
-            msg = "Attempt to register an extension as extension point"
-            raise TypeError(msg)
-
-        if basecls in self._registry:
-            msg = "Extension point {clsname} already registered"
-            msg = msg.format(clsname=basecls.__name__)
-            raise exceptions.ExtensionManagerError(msg)
-
-        for ext_point in self._registry:
-            if check_subclass(basecls, ext_point):
-                msg = ("Extension point {cls1} is a subclass of {cls2} "
-                       "(or viceversa)")
-                msg = msg.format(cls1=basecls.__name__,
-                                 cls2=ext_point.__name__)
-                raise exceptions.ExtensionManagerError(msg)
-
-        self._registry[basecls] = {}
+    # Notes on terminology:
+    # someplugin.py -> plugin (package)
+    # SomeExtensionClass -> extension_point
+    # SubClassImplementingSomeExtensionClass -> extension_class
+    # instance of SubClassImplementingSomeExtensionType -> extension
 
     def load_plugin(self, plugin):
         fullplugin = self.__name__ + ".plugins." + plugin.replace('-', '_')
@@ -93,45 +68,96 @@ class ExtensionManager:
         for ext in extensions:
             self.register_extension_class(ext)
 
-    def register_extension_class(self, cls):
+    def register_extension_point(self, extension_point):
+        def check_subclass(a, b):
+            return issubclass(a, b) or issubclass(b, a)
+
+        full_cls_name = "{}.{}".format(
+            extension_point.__module__, extension_point.__name__)
+
+        # Check "class-iness"
+        if extension_point.__class__ != type:
+            msg = "Extension point must be a class"
+            raise TypeError(msg)
+
         # Check base type
-        if not issubclass(cls, Extension):
+        if not issubclass(extension_point, Extension):
             msg = ("Class {cls} is not a valid extension "
                    "(must a subclass of appkit.app.Extension)")
-            msg = msg.format(cls=cls.__module__+'.'+cls.__name__)
+            msg = msg.format(cls=full_cls_name)
+            raise TypeError(msg)
+
+        # Distinguish between extension points and extension classes
+        if hasattr(extension_point, '__extension_name__'):
+            msg = "Attempt to register an extension as extension point"
+            raise TypeError(msg)
+
+        # Avoid duplicated extension points
+        if extension_point in self._registry:
+            msg = "Extension point {clsname} already registered"
+            msg = msg.format(clsname=extension_point.__name__)
+            raise ExtensionManagerError(msg)
+
+        # Avoid inter-subclassing between extension points
+        for ext_point in self._registry:
+            if check_subclass(extension_point, ext_point):
+                msg = ("Extension point {cls1} is a subclass of {cls2} "
+                       "(or viceversa)")
+                msg = msg.format(cls1=extension_point.__name__,
+                                 cls2=ext_point.__name__)
+                raise ExtensionManagerError(msg)
+
+        self._registry[extension_point] = {}
+
+    def register_extension_class(self, extension_cls):
+        full_cls_name = "{}.{}".format(
+            extension_cls.__module__, extension_cls.__name__)
+
+        # Check "class-iness"
+        if extension_cls.__class__ != type:
+            msg = "Extension point must be a class"
+            raise TypeError(msg)
+
+        # Check base type
+        if not issubclass(extension_cls, Extension):
+            msg = ("Class {cls} is not a valid extension "
+                   "(must a subclass of appkit.app.Extension)")
+            msg = msg.format(cls=full_cls_name)
             raise TypeError(msg)
 
         # Check for mandatory __extension_name__' attr
-        if not hasattr(cls, '__extension_name__'):
+        if not hasattr(extension_cls, '__extension_name__'):
             msg = ("Class {cls} is not a valid extension "
                    "(must define a __extension_name__' attribute)")
-            msg = msg.format(cls=cls.__module__+'.'+cls.__name__)
+            msg = msg.format(cls=full_cls_name)
             raise TypeError(msg)
 
         # Search for matching extension point
         extension_point = None
         for ext_point in self._registry:
-            if issubclass(cls, ext_point):
+            if issubclass(extension_cls, ext_point):
                 extension_point = ext_point
                 break
 
         if extension_point is None:
             msg = "Class {cls} doesn't match any extension point"
-            msg = msg.format(cls=cls.__module__+'.'+cls.__name__)
-            raise exceptions.ExtensionManagerError(msg)
+            msg = msg.format(cls=full_cls_name)
+            raise ExtensionManagerError(msg)
 
         # Check for name colision
-        if cls.__extension_name__ in self._registry[extension_point]:
+        extension_name = extension_cls.__extension_name__
+        if extension_name in self._registry[extension_point]:
             msg = ("Class {cls} can't be registered, name already registered "
                    "by {other}")
+            other = self._registry[extension_point][extension_name]
             msg = msg.format(
-                cls=cls.__name__,
-                other=self._registry[extension_point][cls.__extension_name__].__name__)
-            raise exceptions.ExtensionManagerError(msg)
+                cls=extension_cls.__name__,
+                other=other.__name__)
+            raise ExtensionManagerError(msg)
 
-        self._registry[extension_point][cls.__extension_name__] = cls
+        self._registry[extension_point][extension_name] = extension_cls
 
-    def get_extension_class(self, extension_point, name):
+    def _get_extension_class(self, extension_point, name):
         if not issubclass(extension_point, Extension):
             msg = ("extension_point must be a subclass of "
                    "appkit.extensionmanager.Extension.")
@@ -149,13 +175,25 @@ class ExtensionManager:
 
         return self._registry[extension_point][name]
 
+    def get_extensions_for(self, extension_point, *args, **kwargs):
+        assert extension_point in self._registry
+
+        yield from ((name, self.get_extension(
+                        extension_point, name, *args, **kwargs))
+                    for name in self._registry[extension_point])
+
     def get_extension(self, extension_point, name, *args, **kwargs):
-        return self.get_extension_class(extension_point, name)(*args, **kwargs)
+        cls = self._get_extension_class(extension_point, name)
+        return cls(*args, **kwargs)
 
-    def get_implementations(self, extension_point):
-        if extension_point not in self._registry:
-            msg = "{cls} is not a valid extension point"
-            msg = msg.format(cls=extension_point.__name__)
-            raise TypeError(msg)
 
-        return self._registry[extension_point].copy()
+class ExtensionManagerError(Exception):
+    pass
+
+
+class PluginNotLoadedError(Exception):
+    pass
+
+
+class PluginWithoutExtensionsError(Exception):
+    pass

@@ -1,6 +1,7 @@
 import argparse
 import configparser
 import datetime
+import enum
 import importlib
 import os
 import queue
@@ -352,11 +353,17 @@ def slugify(s, max_len=0, allowed_chars=r'a-zA-Z0-9\-\.'):
     return s[:max_len] if max_len > 0 else s
 
 
+class UserPathType(enum.Enum):
+    CONFIG = appdirs.user_config_dir
+    DATA = appdirs.user_data_dir
+    CACHE = appdirs.user_cache_dir
+
+
 def user_path(typ, name=None, prog=None, create=False, is_folder=None):
     m = {
-        'config': appdirs.user_config_dir,
-        'data': appdirs.user_data_dir,
-        'cache': appdirs.user_cache_dir
+        UserPathType.CONFIG: appdirs.user_config_dir,
+        UserPathType.DATA: appdirs.user_data_dir,
+        UserPathType.CACHE: appdirs.user_cache_dir
     }
 
     if prog is None:
