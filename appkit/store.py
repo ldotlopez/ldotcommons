@@ -157,11 +157,11 @@ class Store:
             subkey, d = self._get_subdict(key, create=False)
             return copy.deepcopy(d[subkey])
 
-        except (KeyNotFoundError, KeyError):
+        except (KeyNotFoundError, KeyError) as e:
             if default != _UNDEF:
                 return copy.deepcopy(default)
             else:
-                raise KeyNotFoundError(key)
+                raise KeyNotFoundError(key) from e
 
     def delete(self, key):
         subkey, d = self._get_subdict(key)
