@@ -1,0 +1,3 @@
+# For color logging
+colorama
+

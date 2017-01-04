@@ -19,7 +19,10 @@
 # USA.
 
 
-from appkit import utils
+from appkit import (
+    types,
+    utils
+)
 
 
 import enum
@@ -50,7 +53,7 @@ def setLevel(level):
 
     _logLevel = level
     for (name, logger) in _loggers.items():
-        logger.setLevel(level)
+        logger.setLevel(level.value)
 
 
 def getLevel():
@@ -61,7 +64,7 @@ def getLevel():
     return _logLevel
 
 
-def getLogger(key=None):
+def getLogger(key=None, format=LOGGING_FORMAT):
     global _loggers
     global _logLevel
 
@@ -70,10 +73,10 @@ def getLogger(key=None):
 
     if key not in _loggers:
         _loggers[key] = logging.getLogger(key)
-        _loggers[key].setLevel(_logLevel)
+        _loggers[key].setLevel(_logLevel.value)
 
-        handler = EncodedStreamHandler()
-        handler.setFormatter(logging.Formatter(LOGGING_FORMAT))
+        handler = StreamHandler()
+        handler.setFormatter(logging.Formatter(format))
         _loggers[key].addHandler(handler)
 
     return _loggers[key]
@@ -86,8 +89,26 @@ class Level(enum.Enum):
     ERROR = logging.ERROR
     CRITICAL = logging.CRITICAL
 
+    @classmethod
+    def incr(cls, val, n=1):
+        l = list(cls)
+        idx = l.index(val)
+        new = max(0, idx - n)
+        return l[new]
 
-class EncodedStreamHandler(logging.StreamHandler):
+    @classmethod
+    def decr(cls, val, n=1):
+        l = list(cls)
+        idx = l.index(val)
+        new = min(len(l) - 1, idx + n)
+        return l[new]
+
+
+class NullLogger(types.NullSingleton):
+    pass
+
+
+class StreamHandler(logging.StreamHandler):
     if _has_color:
         _color_map = {
             Level.DEBUG: colorama.Fore.CYAN,
@@ -100,7 +121,7 @@ class EncodedStreamHandler(logging.StreamHandler):
         _color_map = {}
 
     def __init__(self, encoding='utf-8', *args, **kwargs):
-        super(EncodedStreamHandler, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.encoding = encoding
         self._color_reset = b''
         self.terminator = self.terminator.encode(self.encoding)
