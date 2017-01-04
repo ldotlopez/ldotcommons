@@ -1,6 +1,6 @@
 # -*- encoding: utf-8 -*-
 
-
+import inspect
 import importlib
 import re
 import warnings
@@ -76,7 +76,7 @@ class ExtensionManager:
             extension_point.__module__, extension_point.__name__)
 
         # Check "class-iness"
-        if extension_point.__class__ != type:
+        if not inspect.isclass(extension_point):
             msg = "Extension point must be a class"
             raise TypeError(msg)
 
@@ -114,7 +114,7 @@ class ExtensionManager:
             extension_cls.__module__, extension_cls.__name__)
 
         # Check "class-iness"
-        if extension_cls.__class__ != type:
+        if not inspect.isclass(extension_cls):
             msg = "Extension point must be a class"
             raise TypeError(msg)
 
@@ -175,6 +175,10 @@ class ExtensionManager:
 
         return self._registry[extension_point][name]
 
+    def get_extension_names_for(self, extension_point):
+        assert extension_point in self._registry
+        yield from self._registry[extension_point]
+
     def get_extensions_for(self, extension_point, *args, **kwargs):
         assert extension_point in self._registry
 
@@ -191,9 +195,13 @@ class ExtensionManagerError(Exception):
     pass
 
 
-class PluginNotLoadedError(Exception):
+class PluginNotLoadedError(ExtensionManagerError):
     pass
 
 
-class PluginWithoutExtensionsError(Exception):
+class ExtensionNotFoundError(ExtensionManagerError):
+    pass
+
+
+class PluginWithoutExtensionsError(ExtensionManagerError):
     pass
