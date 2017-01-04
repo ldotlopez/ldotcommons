@@ -19,10 +19,7 @@
 
 
 import copy
-
-
-import yaml
-
+import json
 
 _UNDEF = object()
 
@@ -150,11 +147,16 @@ class Store:
             self.set(k, v)
 
     def dump(self, stream):
-        stream.write(yaml.dump(self._d))
+        buff = json.dumps(self.get(None), sort_keys=True, indent=4)
+        stream.write(buff)
 
     def load(self, stream):
-        d = flatten_dict(yaml.load(stream.read()))
-        for (k, v) in d.items():
+        try:
+            data = flatten_dict(json.loads(stream.read()))
+        except json.decoder.JSONDecodeError as e:
+            raise FormatError() from e
+
+        for (k, v) in data.items():
             self.set(k, v)
 
     def load_arguments(self, args):
