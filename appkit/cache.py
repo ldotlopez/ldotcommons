@@ -1,6 +1,6 @@
 # -*- encoding: utf-8 -*-
 
-from appkit import utils
+from appkit import types
 
 import os
 import pickle
@@ -20,7 +20,7 @@ class NullCache:
         pass
 
     def get(self, key):
-        return None
+        raise CacheMissError()
 
     def set(self, key, data):
         pass
@@ -32,7 +32,7 @@ class DiskCache:
         self.basedir = basedir
         self.delta = delta
         self._is_tmp = False
-        self._logger = logger or utils.NullSingleton()
+        self._logger = logger or types.NullSingleton()
 
         if not self.basedir:
             self.basedir = tempfile.mkdtemp()
@@ -53,26 +53,30 @@ class DiskCache:
         with open(p, 'wb') as fh:
             fh.write(pickle.dumps(value))
 
-    def get(self, key):
+    def get(self, key, delta=None):
         on_disk = self._on_disk_path(key)
         try:
             s = os.stat(on_disk)
-        except (OSError, IOError):
-            return None
 
-        if self.delta >= 0 and \
-           (time.mktime(time.localtime()) - s.st_mtime > self.delta):
+        except (OSError, IOError) as e:
+            raise CacheMissError() from e
+
+        delta = delta or self.delta
+        if delta >= 0 and \
+           (time.mktime(time.localtime()) - s.st_mtime > delta):
             msg = "Key «{key}» is outdated"
             msg = msg.format(key=key)
             self._logger.debug(msg)
             os.unlink(on_disk)
-            return None
+
+            raise CacheMissError()
 
         try:
             with open(on_disk, 'rb') as fh:
                 msg = "Found «{key}»: '{path}'"
                 msg = msg.format(key=key, path=on_disk)
                 self._logger.debug(msg)
+
                 return pickle.loads(fh.read())
 
         except (IOError, OSError) as e:
@@ -80,11 +84,24 @@ class DiskCache:
             msg = msg.format(key=key, reason=str(e))
             self._logger.error(msg)
 
-            try:
-                os.unlink(on_disk)
-            except:
-                pass
+            raise CacheMissError() from e
 
     def __del__(self):
         if self._is_tmp:
             shutil.rmtree(self.basedir)
+
+
+class DeprecatedDiskCache(DiskCache):
+    def get(self, key):
+        try:
+            super().get(key)
+        except CacheMissError:
+            return None
+
+
+class CacheError(Exception):
+    pass
+
+
+class CacheMissError(CacheError):
+    pass
