@@ -54,7 +54,7 @@ class CronManager:
         self.app = app
         self.app.register_extension_point(
             self.__class__.TASK_EXTENSION_POINT)
-        self.logger = logging.get_logger('cronmanager')
+        self.logger = logging.getLogger('cronmanager')
 
     @abc.abstractmethod
     def load_checkpoint(self, task):
@@ -159,7 +159,7 @@ class CronCommand(application.Command):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.logger = logging.get_logger('cron')
+        self.logger = logging.getLogger('cron')
 
     def execute(self, app, arguments):
         list_ = arguments.list

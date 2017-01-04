@@ -5,7 +5,7 @@ from ldotcommons import utils
 
 class Console(messaging.Notifier):
     def __init__(self, prog=utils.prog_name(), line_len=72):
-        self._logger = logging.get_logger(prog)
+        self._logger = logging.getLogger(prog)
         self._line_len = line_len
 
     def send(self, msg, detail=''):

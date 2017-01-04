@@ -4,7 +4,7 @@ from urllib import parse, request
 from ldotcommons import logging
 from ldotcommons import messaging
 
-_logger = logging.get_logger(__name__)
+_logger = logging.getLogger(__name__)
 
 _ENDPOINT = 'https://api.pushover.net/1/messages.json'
 

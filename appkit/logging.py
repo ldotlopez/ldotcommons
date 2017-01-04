@@ -18,8 +18,14 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
 # USA.
 
+
+from appkit import utils
+
+
+import enum
 import functools
 import logging
+
 
 try:
     import colorama
@@ -27,29 +33,68 @@ try:
 except ImportError:
     _has_color = False
 
-from appkit import utils
-
 
 LOGGING_FORMAT = "[%(levelname)s] [%(name)s] %(message)s"
 
-_loggers = dict()
-_log_level = logging.DEBUG
 
-DEBUG = logging.DEBUG
-INFO = logging.INFO
-WARNING = logging.WARNING
-ERROR = logging.ERROR
-CRITICAL = logging.CRITICAL
+_loggers = dict()
+_logLevel = logging.DEBUG
+
+
+def setLevel(level):
+    """
+    Set global logging level for all appkit.logging loggers
+    """
+    global _loggers
+    global _logLevel
+
+    _logLevel = level
+    for (name, logger) in _loggers.items():
+        logger.setLevel(level)
+
+
+def getLevel():
+    """
+    Get global logging level for all appkit.logging loggers
+    """
+    global _logLevel
+    return _logLevel
+
+
+def getLogger(key=None):
+    global _loggers
+    global _logLevel
+
+    if key is None:
+        key = utils.prog_name()
+
+    if key not in _loggers:
+        _loggers[key] = logging.getLogger(key)
+        _loggers[key].setLevel(_logLevel)
+
+        handler = EncodedStreamHandler()
+        handler.setFormatter(logging.Formatter(LOGGING_FORMAT))
+        _loggers[key].addHandler(handler)
+
+    return _loggers[key]
+
+
+class Level(enum.Enum):
+    DEBUG = logging.DEBUG
+    INFO = logging.INFO
+    WARNING = logging.WARNING
+    ERROR = logging.ERROR
+    CRITICAL = logging.CRITICAL
 
 
 class EncodedStreamHandler(logging.StreamHandler):
     if _has_color:
         _color_map = {
-            'DEBUG': colorama.Fore.CYAN,
-            'INFO': colorama.Fore.GREEN,
-            'WARNING': colorama.Fore.YELLOW,
-            'ERROR': colorama.Fore.RED,
-            'CRITICAL': colorama.Back.RED,
+            Level.DEBUG: colorama.Fore.CYAN,
+            Level.INFO: colorama.Fore.GREEN,
+            Level.WARNING: colorama.Fore.YELLOW,
+            Level.ERROR: colorama.Fore.RED,
+            Level.CRITICAL: colorama.Back.RED,
         }
     else:
         _color_map = {}
@@ -83,34 +128,7 @@ class EncodedStreamHandler(logging.StreamHandler):
             self.handleError(record)
 
 
-def set_level(level):
-    global _loggers
-    global _log_level
-
-    _log_level = level
-    for (name, logger) in _loggers.items():
-        logger.setLevel(level)
-
-
-def get_logger(key=None):
-    global _loggers
-    global _log_level
-
-    if key is None:
-        key = utils.prog_name()
-
-    if key not in _loggers:
-        _loggers[key] = logging.getLogger(key)
-        _loggers[key].setLevel(_log_level)
-
-        handler = EncodedStreamHandler()
-        handler.setFormatter(logging.Formatter(LOGGING_FORMAT))
-        _loggers[key].addHandler(handler)
-
-    return _loggers[key]
-
-
-def log_on_success(msg='done', level=20):
+def logOnSuccess(msg='done', level=Level.DEBUG):
     """
     logs `msg` with `level` at the end of the method call
     """

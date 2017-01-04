@@ -4,7 +4,7 @@ import twitter as twapi
 from ldotcommons import logging
 from ldotcommons import messaging
 
-_logger = logging.get_logger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class Twitter(twapi.Twitter, messaging.Notifier):

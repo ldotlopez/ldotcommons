@@ -60,10 +60,10 @@ class BaseApplication(extensionmanager.ExtensionManager):
             warnings.warn('pluginpath is ignored')
 
         if logger is None:
-            logger = logging.get_logger('extension-manager')
+            logger = logging.getLogger('extension-manager')
 
         super().__init__(name, logger=logger)
-        self.logger = logging.get_logger(name)
+        self.logger = logging.getLogger(name)
 
 
 class ServiceApplicationMixin:
