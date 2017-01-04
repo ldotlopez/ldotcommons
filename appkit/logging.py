@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+# Copyright (C) 2015 Luis López
 # Copyright (C) 2012 Jacobo Tarragón
 #
 # This program is free software; you can redistribute it and/or
