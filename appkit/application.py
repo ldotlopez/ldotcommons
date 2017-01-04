@@ -17,9 +17,8 @@ class Command(extensionmanager.Extension):
     help = ''
     arguments = ()
 
-    @classmethod
-    def setup_argparser(cls, cmdargparser):
-        arguments = getattr(cls, 'arguments')
+    def setup_argparser(self, cmdargparser):
+        arguments = getattr(self, 'arguments')
         for argument in arguments:
             args, kwargs = argument()
             cmdargparser.add_argument(*args, **kwargs)
@@ -121,12 +120,8 @@ class CommandlineApplicationMixin:
         yield from self.get_extensions_for(
             self.__class__.COMMAND_EXTENSION_POINT)
 
-    def execute_command(self, command_name, arguments):
-        ext = self.get_extension(
-            self.__class__.COMMAND_EXTENSION_POINT,
-            command_name)
-
-        return ext.execute(self, arguments)
+    def execute_command_extension(self, command, arguments):
+        return command.execute(self, arguments)
 
     def execute(self, *args):
         assert (isinstance(args, collections.Iterable))
@@ -164,9 +159,11 @@ class CommandlineApplicationMixin:
             cmdname = args.subcommand
 
         try:
-            self.execute_command(cmdname, args)
+            # Reuse commands
+            tmp = dict(commands)
+            self.execute_command_extension(tmp[cmdname], args)
 
-        except CommandArgumentError as e:
+        except ArgumentsError as e:
             if len(commands) > 1:
                 subargparsers[args.subcommand].print_help()
             else:
@@ -178,7 +175,22 @@ class CommandlineApplicationMixin:
         self.execute(*sys.argv[1:])
 
 
-class CommandArgumentError(Exception):
+class ExtensionNotFoundError(extensionmanager.ExtensionNotFoundError):
+    pass
+
+
+class ExtensionError(Exception):
+    """
+    Generic extension error
+    """
+    pass
+
+
+class ConfigurationError(ExtensionError):
+    pass
+
+
+class ArgumentsError(ExtensionError):
     pass
 
 

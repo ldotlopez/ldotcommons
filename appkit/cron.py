@@ -1,10 +1,12 @@
 from appkit import (
     application,
+    logging,
     utils
 )
 
 
 import abc
+import sys
 
 
 class CronTask(application.Extension):
@@ -32,6 +34,7 @@ class CronManager:
         self.app = app
         self.app.register_extension_point(
             self.__class__.TASK_EXTENSION_POINT)
+        self.logger = logging.get_logger('cronmanager')
 
     @abc.abstractmethod
     def load_checkpoint(self, task):
@@ -42,10 +45,21 @@ class CronManager:
         raise NotImplementedError()
 
     def get_tasks(self):
-        yield from self.app.get_extensions_for(
-            self.__class__.TASK_EXTENSION_POINT)
+        for name in self.app.get_extension_names_for(
+                        self.__class__.TASK_EXTENSION_POINT):
 
-    def execute_task(self, task, app):
+            try:
+                yield name, self.app.get_extension(
+                    self.__class__.TASK_EXTENSION_POINT, name)
+            except application.ExtensionError as e:
+                msg = "Task «{name}» failed: '{msg}'"
+                msg = msg.format(name=name, msg=e)
+                self.logger.error(msg)
+
+            except StopIteration:
+                break
+
+    def execute_task_extension(self, task, app):
         return task.execute(app)
 
     def execute(self, task, force=False):
@@ -64,11 +78,7 @@ class CronManager:
 
         timedelta = utils.now_timestamp() - checkpoint.get('last-execution', 0)
         if force or timedelta >= task.interval:
-            try:
-                ret = self.execute_task(task, self.app)
-            except CronTaskError as e:
-                self.logger.error(e)
-                raise
+            ret = self.execute_task_extension(task, self.app)
 
             checkpoint.update({
                 'last-execution': utils.now_timestamp()
@@ -76,19 +86,16 @@ class CronManager:
             self.save_checkpoint(task, checkpoint)
             return ret
 
-    def execute_by_name(self, name, force=False):
-        assert isinstance(name, str) and name
-        assert isinstance(force, bool)
-
-        tasks = {name: task for (name, task) in self.get_tasks()}
-        if name not in tasks:
-            raise CronTaskNotFoundError(name)
-
-        return self.execute(tasks[name], force=force)
-
     def execute_all(self, force=False):
-        for task in self.get_tasks():
-            self.execute(task, force=force)
+        ret = []
+
+        for name, task in self.get_tasks():
+            try:
+                ret.append((task, self.execute(task, force=force)))
+            except application.ExtensionError as e:
+                ret.append((task, e))
+
+        return ret
 
 
 class CronService(CronManager, application.Service):
@@ -130,6 +137,10 @@ class CronCommand(application.Command):
         ),
     )
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.logger = logging.get_logger('cron')
+
     def execute(self, app, arguments):
         list_ = arguments.list
         all_ = arguments.all
@@ -141,17 +152,21 @@ class CronCommand(application.Command):
         if test == 0:
             msg = ("One of '--list', '--all' or '--task' options must be "
                    "specified")
-            raise application.CommandArgumentError(msg)
+            raise application.ArgumentsError(msg)
 
         if test > 1:
             msg = ("Only one of '--list', '--all' and '--task' options can be "
                    "specified. They are mutually exclusive.")
-            raise application.CommandArgumentError(msg)
+            raise application.ArgumentsError(msg)
 
         manager = app.get_service(self.__class__.SERVICE_NAME)
 
         if list_:
-            tasks = manager.get_tasks()
+            tasks = list(manager.get_tasks())
+            if not tasks:
+                msg = "No available tasks"
+                print(msg, file=sys.stderr)
+
             for name, task in sorted(tasks, key=lambda x: x[0]):
                 msg = "{name} – interval: {interval} ({secs} seconds)"
                 msg = msg.format(
@@ -162,17 +177,41 @@ class CronCommand(application.Command):
                 print(msg)
 
         elif all_:
-            manager.execute_all(force=force)
+            results = manager.execute_all(force=force)
+            if not results:
+                msg = "No available tasks"
+                print(msg, file=sys.stderr)
+
+            for (task, result) in results:
+                self._handle_task_result(task, result)
 
         elif tasks:
-            for name in tasks:
-                manager.execute_by_name(name, force)
+            for name, task in manager.get_tasks():
+                try:
+                    manager.execute(task, force)
+                except application.ExtensionError as e:
+                    self._handle_task_result(task, e)
 
         else:
             # This code should never be reached but keeping it here we will
             # prevent future mistakes
             msg = "Incorrect usage"
-            raise application.cliexc.PluginArgumentError(msg)
+            raise application.ExcetionError(msg)
+
+    def _handle_task_result(self, task, result=None):
+        if result is None:
+            msg = "Task «{name}» OK"
+            msg = msg.format(name=task.__extension_name__)
+            self.logger.info(msg)
+
+        elif isinstance(result, application.ExtensionError):
+            msg = "Task «{name}» failed: '{msg}'"
+            msg = msg.format(name=task.__extension_name__,
+                             msg=result)
+            self.logger.error(msg)
+
+        else:
+            raise TypeError(result)
 
 
 class CronTaskError(Exception):
