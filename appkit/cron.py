@@ -29,7 +29,7 @@ import abc
 import sys
 
 
-class CronTask(application.Extension):
+class Task(application.Extension):
     interval = None
 
     def __init__(self, *args, **kwargs):
@@ -48,7 +48,7 @@ class CronTask(application.Extension):
 
 
 class CronManager:
-    TASK_EXTENSION_POINT = CronTask
+    TASK_EXTENSION_POINT = Task
 
     def __init__(self, app):
         self.app = app
@@ -206,7 +206,8 @@ class CronCommand(application.Command):
                 self._handle_task_result(task, result)
 
         elif tasks:
-            for name, task in manager.get_tasks():
+            tasks = [(n, e) for (n, e) in manager.get_tasks() if n in tasks]
+            for name, task in tasks:
                 try:
                     manager.execute(task, force)
                 except application.ExtensionError as e:
@@ -234,9 +235,9 @@ class CronCommand(application.Command):
             raise TypeError(result)
 
 
-class CronTaskError(Exception):
+class TaskError(Exception):
     pass
 
 
-class CronTaskNotFoundError(Exception):
+class TaskNotFoundError(Exception):
     pass
