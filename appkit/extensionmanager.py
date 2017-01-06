@@ -151,29 +151,31 @@ class ExtensionManager:
             raise TypeError(msg)
 
         # Search for matching extension point
-        extension_point = None
+        extension_points = []
         for ext_point in self._registry:
             if issubclass(extension_cls, ext_point):
-                extension_point = ext_point
-                break
+                extension_points.append(ext_point)
 
-        if extension_point is None:
+        if not extension_points:
             msg = "Class {cls} doesn't match any extension point"
             msg = msg.format(cls=full_cls_name)
             raise ExtensionManagerError(msg)
 
-        # Check for name colision
-        extension_name = extension_cls.__extension_name__
-        if extension_name in self._registry[extension_point]:
-            msg = ("Class {cls} can't be registered, name already registered "
-                   "by {other}")
-            other = self._registry[extension_point][extension_name]
-            msg = msg.format(
-                cls=extension_cls.__name__,
-                other=other.__name__)
-            raise ExtensionManagerError(msg)
+        # Check for name colisions
+        ext_name = extension_cls.__extension_name__
+        for ext_point in extension_points:
+            if ext_name in self._registry[ext_point]:
+                msg = ("Class {cls} can't be registered, name already "
+                       "registered by {other}")
+                other = self._registry[ext_point][ext_name]
+                msg = msg.format(
+                    cls=extension_cls.__name__,
+                    other=other.__name__)
+                raise ExtensionManagerError(msg)
 
-        self._registry[extension_point][extension_name] = extension_cls
+        # Finally insert into registry
+        for ext_point in extension_points:
+            self._registry[ext_point][ext_name] = extension_cls
 
     def _get_extension_class(self, extension_point, name):
         if not issubclass(extension_point, Extension):
