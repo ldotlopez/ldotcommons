@@ -24,7 +24,10 @@ import re
 import warnings
 
 
-from appkit import types
+from appkit import (
+    logging,
+    types
+)
 
 
 class Extension:
@@ -193,6 +196,12 @@ class ExtensionManager:
                              '.' + extension_point.__name__)
             raise TypeError(msg)
 
+        if name not in self._registry[extension_point]:
+            msg = ("Extension «{name}» not found for extension point "
+                   "«{ext_point}»")
+            msg = msg.format(name=name, ext_point=extension_point)
+            raise ExtensionNotFoundError(msg)
+
         return self._registry[extension_point][name]
 
     def get_extension_names_for(self, extension_point):
@@ -200,7 +209,10 @@ class ExtensionManager:
         yield from self._registry[extension_point]
 
     def get_extensions_for(self, extension_point, *args, **kwargs):
-        assert extension_point in self._registry
+        if extension_point not in self._registry:
+            msg = "Extension point not registered: «{name}»"
+            msg = msg.format(name=extension_point.__qualname__)
+            raise ExtensionManagerError(msg)
 
         yield from ((name, self.get_extension(
                         extension_point, name, *args, **kwargs))

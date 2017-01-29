@@ -23,7 +23,10 @@ from appkit import (
     logging,
     utils
 )
-
+from appkit.application import (
+    commands,
+    services
+)
 
 import abc
 import sys
@@ -34,6 +37,7 @@ class Task(application.Extension):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.human_interval = str(self.interval)
 
         try:
             self.interval = utils.parse_interval(self.interval)
@@ -44,7 +48,9 @@ class Task(application.Extension):
 
     @abc.abstractmethod
     def execute(self, app):
-        raise NotImplementedError()
+        msg = "Extension {name} doesn't implements execute method"
+        msg = msg.format(name=self.__class__)
+        raise NotImplementedError(msg)
 
 
 class CronManager:
@@ -58,19 +64,40 @@ class CronManager:
 
     @abc.abstractmethod
     def load_checkpoint(self, task):
-        raise NotImplementedError()
+        """
+        CronManagers must implement this method in order to load task's
+        checkpoints
+        """
+        msg = "Extension {name} doesn't implements load_checkpoint method"
+        msg = msg.format(name=self.__class__)
+        raise NotImplementedError(msg)
 
     @abc.abstractmethod
     def save_checkpoint(self, task, checkpoint):
-        raise NotImplementedError()
+        """
+        CronManagers must implement this method in order to save task's
+        checkpoints
+        """
+        msg = "Extension {name} doesn't implements save_checkpoint method"
+        msg = msg.format(name=self.__class__)
+        raise NotImplementedError(msg)
+
+    def call_execute_method(self, task, app):
+        """
+        Overridable method to customize task execution
+        """
+        return task.execute(app)
+
+    def get_task(self, name):
+        return self.app.get_extension(self.__class__.TASK_EXTENSION_POINT,
+                                      name)
 
     def get_tasks(self):
         for name in self.app.get_extension_names_for(
                         self.__class__.TASK_EXTENSION_POINT):
 
             try:
-                yield name, self.app.get_extension(
-                    self.__class__.TASK_EXTENSION_POINT, name)
+                yield name, self.get_task(name)
             except application.ExtensionError as e:
                 msg = "Task «{name}» failed: '{msg}'"
                 msg = msg.format(name=name, msg=e)
@@ -78,9 +105,6 @@ class CronManager:
 
             except StopIteration:
                 break
-
-    def execute_task_extension(self, task, app):
-        return task.execute(app)
 
     def execute(self, task, force=False):
         assert isinstance(task, self.__class__.TASK_EXTENSION_POINT)
@@ -98,7 +122,7 @@ class CronManager:
 
         timedelta = utils.now_timestamp() - checkpoint.get('last-execution', 0)
         if force or timedelta >= task.interval:
-            ret = self.execute_task_extension(task, self.app)
+            ret = self.call_execute_method(task, self.app)
 
             checkpoint.update({
                 'last-execution': utils.now_timestamp()
@@ -118,11 +142,11 @@ class CronManager:
         return ret
 
 
-class CronService(CronManager, application.Service):
+class CronService(CronManager, services.Service):
     __extension_name__ = 'cron'
 
 
-class CronCommand(application.Command):
+class CronCommand(commands.Command):
     __extension_name__ = 'cron'
     SERVICE_NAME = 'cron'
 

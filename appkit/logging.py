@@ -41,7 +41,7 @@ LOGGING_FORMAT = "[%(levelname)s] [%(name)s] %(message)s"
 
 
 _loggers = dict()
-_logLevel = logging.DEBUG
+_logLevel = None  # _logLevel is set at the bottom of the file
 
 
 def setLevel(level):
@@ -163,3 +163,6 @@ def logOnSuccess(msg='done', level=Level.DEBUG):
             return ret
         return wrapped_fn
     return decorator
+
+
+_logLevel = Level.DEBUG

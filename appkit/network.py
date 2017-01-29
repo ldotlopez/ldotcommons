@@ -30,11 +30,10 @@ from urllib import request, error as urllib_error
 
 import aiohttp
 
-from . import cache, exceptions, utils
-
-
-class FetchError(exceptions.Exception):
-    pass
+from appkit import (
+    cache,
+    utils
+)
 
 
 class Fetcher:
@@ -205,12 +204,12 @@ class AIOHttpFetcher:
 
 class AsyncFetcher:
     def __init__(self, logger=None, cache=None, max_requests=1,
-                 timeout=-1,
                  **session_options):
         self._logger = logger
         self._cache = cache
         self._semaphore = asyncio.Semaphore(max_requests)
-        self._session = aiohttp.ClientSession(**session_options)
+        self._session_options = session_options
+        self._session_options['cookie_jar'] = aiohttp.CookieJar()
 
     @property
     def session(self):
@@ -224,43 +223,38 @@ class AsyncFetcher:
         return content
 
     @asyncio.coroutine
-    def fetch_full(self, url, skip_cache=False, timeout=0, **request_options):
+    def fetch_full(self, url, skip_cache=False, timeout=None,
+                   **request_options):
         use_cache = not skip_cache and self._cache
 
         if use_cache:
-            buff = self._cache.get(url)
-            if buff:
+            try:
+                buff = self._cache.get(url)
                 return None, buff
+            except cache.CacheMissError:
+                pass
 
         with (yield from self._semaphore):
-            with AsyncTimeout(timeout):
-                if self._logger:
-                    msg = "Fetching «{url}»"
-                    msg = msg.format(url=url)
-                    self._logger.info(msg)
+            with aiohttp.ClientSession(**self._session_options) as session:
+                with aiohttp.Timeout(timeout):
+                    if self._logger:
+                        msg = "Fetching «{url}»"
+                        msg = msg.format(url=url)
+                        self._logger.info(msg)
 
-                resp = yield from self.session.get(url, **request_options)
-                buff = yield from resp.content.read()
-                yield from resp.release()
+                    resp = yield from session.get(url, **request_options)
+                    buff = yield from resp.content.read()
+                    yield from resp.release()
 
         if use_cache:
             self._cache.set(url, buff)
 
         return resp, buff
 
-    def __del__(self):
-        self.session.close()
+
+class BaseError(Exception):
+    pass
 
 
-class AsyncTimeout(aiohttp.Timeout):
-    def __init__(self, t):
-        super().__init__(t)
-        self.t = t
-
-    def __enter__(self, *args, **kwargs):
-        if self.t > 0:
-            return super().__enter__(*args, **kwargs)
-
-    def __exit__(self, *args, **kwargs):
-        if self.t > 0:
-            return super().__exit__(*args, **kwargs)
+class FetchError(BaseError):
+    pass
