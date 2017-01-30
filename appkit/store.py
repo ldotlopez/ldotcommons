@@ -21,7 +21,7 @@
 import copy
 import json
 
-_UNDEF = object()
+UNDEFINED = object()
 
 
 class FormatError(Exception):
@@ -171,7 +171,7 @@ class Store:
         v = self._process_value(key, value)
         d[subkey] = v
 
-    def get(self, key, default=_UNDEF):
+    def get(self, key, default=UNDEFINED):
         if key is None:
             return self._d
 
@@ -180,7 +180,7 @@ class Store:
             return copy.deepcopy(d[subkey])
 
         except (KeyNotFoundError, KeyError) as e:
-            if default != _UNDEF:
+            if default != UNDEFINED:
                 return copy.deepcopy(default)
             else:
                 raise KeyNotFoundError(key) from e
