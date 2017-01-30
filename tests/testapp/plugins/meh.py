@@ -1,7 +1,7 @@
-from appkit import extension
+from appkit.extensionmanager import Extension
 
 
-class Meh(extension.Extension):
+class Meh(Extension):
     __extension_name__ = 'meh'
 
 

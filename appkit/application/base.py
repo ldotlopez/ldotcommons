@@ -18,10 +18,6 @@
 # USA.
 
 
-import abc
-import argparse
-import collections
-import sys
 import warnings
 
 
@@ -41,7 +37,7 @@ class BaseApplication(extensionmanager.ExtensionManager):
         if logger is None:
             logger = logging.getLogger('extension-manager')
 
-        super().__init__(name, logger=logger)
+        super().__init__(name)
         self.logger = logging.getLogger(name)
 
 

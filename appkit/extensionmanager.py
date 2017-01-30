@@ -25,7 +25,6 @@ import warnings
 
 
 from appkit import (
-    logging,
     types
 )
 
@@ -35,21 +34,13 @@ class Extension:
 
 
 class ExtensionManager:
-    def __init__(self, name, logger=None):
+    def __init__(self, name):
         name = name.replace('-', '_')
         if not re.search(r'^[a-z_][a-z0-9_]*$', name, re.IGNORECASE):
             msg = "name must match '^[a-z_][a-z0-9_]*$'"
             raise ValueError(msg)
 
-        if not logger:
-            msg = "{clsname}: No logger configured, messages will be discarted"
-            msg = msg.format(clsname=self.__class__.__name__)
-            warnings.warn(msg)
-
-            logger = types.Null()
-
         self.__name__ = name
-        self._logger = logger
         self._registry = {}
 
         # Big warning: We cant preregister Extension as extension_point
@@ -215,7 +206,7 @@ class ExtensionManager:
             raise ExtensionManagerError(msg)
 
         yield from ((name, self.get_extension(
-                        extension_point, name, *args, **kwargs))
+                    extension_point, name, *args, **kwargs))
                     for name in self._registry[extension_point])
 
     def get_extension(self, extension_point, name, *args, **kwargs):
