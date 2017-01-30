@@ -33,14 +33,14 @@ import sys
 
 
 class Task(application.Extension):
-    interval = None
+    INTERVAL = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.human_interval = str(self.interval)
+        self.human_interval = str(self.INTERVAL)
 
         try:
-            self.interval = utils.parse_interval(self.interval)
+            self.INTERVAL = utils.parse_interval(self.INTERVAL)
         except ValueError as e:
             msg = "Invalid interval value '{interval}', check docs"
             msg = msg.format(interval=self.interval)

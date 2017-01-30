@@ -7,12 +7,11 @@ from appkit import application
 
 
 class Command(application.Extension):
-    help = ''
-    arguments = ()
+    HELP = ''
+    ARGUMENTS = ()
 
     def setup_argparser(self, cmdargparser):
-        arguments = getattr(self, 'arguments')
-        for argument in arguments:
+        for argument in self.ARGUMENTS:
             args, kwargs = argument()
             cmdargparser.add_argument(*args, **kwargs)
 
@@ -94,7 +93,7 @@ class CommandManager:
             for (cmdname, cmdext) in commands:
                 subargparsers[cmdname] = subparser.add_parser(
                     cmdname,
-                    help=cmdext.help)
+                    help=cmdext.HELP)
                 cmdext.setup_argparser(subargparsers[cmdname])
 
             args = argparser.parse_args(args)
