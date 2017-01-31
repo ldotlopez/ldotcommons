@@ -1,6 +1,6 @@
 # -*- encoding: utf-8 -*-
 
-from distutils.core import setup
+from setuptools.core import setup
 
 fh = open("requirements.txt")
 pkgs = filter(lambda line: line and line[0] >= 'a' and line[0] <= 'z',
