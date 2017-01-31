@@ -121,7 +121,7 @@ class CronManager:
                            if v is not None})
 
         timedelta = utils.now_timestamp() - checkpoint.get('last-execution', 0)
-        if force or timedelta >= task.interval:
+        if force or timedelta >= task.INTERVAL:
             ret = self.call_execute_method(task, self.app)
 
             checkpoint.update({
