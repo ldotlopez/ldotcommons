@@ -21,21 +21,28 @@
 import copy
 import json
 
-UNDEFINED = object()
+
+from appkit import deprecations
+from appkit.namespace import (
+    Namespace,
+    KeyUsedAsNamespaceError,
+    flatten_dict,
+    UNDEFINED
+)
 
 
 class FormatError(Exception):
     pass
 
 
-class IllegalKeyError(ValueError):
+class IllegalKeyError(deprecations.DeprecatedClass, TypeError):
     def __unicode__(self):
         return "Illegal key: '{}'".format(self.args[0])
 
     __str__ = __unicode__
 
 
-class KeyNotFoundError(KeyError):
+class KeyNotFoundError(deprecations.DeprecatedClass, KeyError):
     def __unicode__(self):
         return "Key not found: '{}'".format(self.args[0])
 
@@ -55,23 +62,6 @@ class ValidationError(Exception):
     __str__ = __unicode__
 
 
-def flatten_dict(d):
-    if not isinstance(d, dict):
-        raise TypeError()
-
-    ret = {}
-
-    for (k, v) in d.items():
-        if isinstance(v, dict):
-            subret = flatten_dict(v)
-            subret = {k + '.' + subk: subv for (subk, subv) in subret.items()}
-            ret.update(subret)
-        else:
-            ret[k] = v
-
-    return ret
-
-
 class TypeValidator:
     def __init__(self, type_map):
         self.type_map = type_map
@@ -88,7 +78,7 @@ class TypeValidator:
         return v
 
 
-class Store:
+class StoreNative:
     def __init__(self, items={}, validators=[]):
         self._d = {}
         self._validators = []
@@ -228,3 +218,79 @@ class Store:
     __setitem__ = get
     __setitem__ = set
     __delitem__ = delete
+
+
+class StoreAdaptor(Namespace):
+    def __init__(self, items={}, validators=[]):
+        super().__init__(**items)
+        self._validators = []
+
+        for validator in validators:
+            self.add_validator(validator)
+
+    def __getitem__(self, key):
+        try:
+            return super().__getitem__(key)
+        except KeyError as e:
+            raise KeyNotFoundError(e.args[0]) from e
+
+    def __setitem__(self, key, value):
+        try:
+            for vfunc in self._validators:
+                value = vfunc(key, value)
+            return super().__setitem__(key, value)
+        except TypeError as e:
+            raise IllegalKeyError(e.args[0]) from e
+
+    def get(self, item, default=UNDEFINED):
+        if item is None:
+            return self.asdict()
+
+        return super().get(item, default)
+
+    def add_validator(self, fn):
+        self._validators.append(fn)
+
+    def dump(self, stream):
+        buff = json.dumps(self.get(None), sort_keys=True, indent=4)
+        stream.write(buff)
+
+    def load(self, stream):
+        try:
+            data = flatten_dict(json.loads(stream.read()))
+        except json.decoder.JSONDecodeError as e:
+            raise FormatError() from e
+
+        for (k, v) in data.items():
+            self.set(k, v)
+
+    def load_arguments(self, args):
+        for (k, v) in vars(args).items():
+            self.set(k, v)
+
+    @deprecations.deprecatedmethod
+    def all_keys(self):
+        return list(iter(self))
+
+    @deprecations.deprecatedmethod
+    def empty(self):
+        keys = list(self.keys())
+        for key in keys:
+            del(self[key])
+
+    @deprecations.deprecatedmethod
+    def has_key(self, item):
+        return item in self
+
+    @deprecations.deprecatedmethod
+    def has_namespace(self, ns):
+        ns = self.get(ns, None)
+        return isinstance(ns, Namespace)
+
+    @deprecations.deprecatedmethod
+    def replace(self, *args, **kwargs):
+        self.empty()
+        Namespace.__init__(self, *args, **kwargs)
+
+
+Store = StoreAdaptor
