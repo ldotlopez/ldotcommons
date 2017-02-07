@@ -20,6 +20,15 @@ class ApplicationMixin:
         if issubclass(cls, self.__class__.SERVICE_EXTENSION_POINT):
             self._services[cls.__extension_name__] = cls(self)
 
+    def _register_as_service(self, name, obj):
+        """
+        Method to register any instance as a service.
+        This is a little hack to allow some stuff work in appkit
+        """
+        assert isinstance(obj, object)
+        assert name not in self._services
+        self._services[name] = obj
+
     def get_extension(self, extension_point, name, *args, **kwargs):
         assert isinstance(extension_point, type)
         assert isinstance(name, str)

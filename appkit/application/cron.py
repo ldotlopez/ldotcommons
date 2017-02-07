@@ -24,8 +24,7 @@ from appkit import (
     utils
 )
 from appkit.application import (
-    commands,
-    services
+    commands
 )
 
 import abc
@@ -53,14 +52,17 @@ class Task(application.Extension):
         raise NotImplementedError(msg)
 
 
-class CronManager:
+class Manager:
     TASK_EXTENSION_POINT = Task
+    SERVICE_NAME = 'cron'
 
     def __init__(self, app):
         self.app = app
         self.app.register_extension_point(
             self.__class__.TASK_EXTENSION_POINT)
         self.logger = logging.getLogger('cronmanager')
+
+        self.app._register_as_service(self.__class__.SERVICE_NAME, self)
 
     @abc.abstractmethod
     def load_checkpoint(self, task):
@@ -94,7 +96,7 @@ class CronManager:
 
     def get_tasks(self):
         for name in self.app.get_extension_names_for(
-                        self.__class__.TASK_EXTENSION_POINT):
+                self.__class__.TASK_EXTENSION_POINT):
 
             try:
                 yield name, self.get_task(name)
@@ -142,17 +144,12 @@ class CronManager:
         return ret
 
 
-class CronService(CronManager, services.Service):
-    __extension_name__ = 'cron'
-
-
-class CronCommand(commands.Command):
+class Command(commands.Command):
     __extension_name__ = 'cron'
     SERVICE_NAME = 'cron'
 
-    help = 'Run cron tasks'
-
-    arguments = (
+    HELP = 'Run cron tasks'
+    ARGUMENTS = (
         application.cliargument(
             '-a', '--all',
             dest='all',
@@ -215,8 +212,8 @@ class CronCommand(commands.Command):
                 msg = "{name} – interval: {interval} ({secs} seconds)"
                 msg = msg.format(
                     name=name,
-                    interval=task.interval,
-                    secs=utils.parse_interval(task.interval))
+                    interval=task.human_interval,
+                    secs=utils.parse_interval(task.INTERVAL))
 
                 print(msg)
 

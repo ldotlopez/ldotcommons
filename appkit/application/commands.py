@@ -20,7 +20,7 @@ class Command(application.Extension):
         raise NotImplementedError()
 
 
-class CommandManager:
+class Manager:
     COMMAND_EXTENSION_POINT = Command
 
     def __init__(self, app):
