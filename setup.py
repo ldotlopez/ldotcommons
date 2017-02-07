@@ -9,7 +9,7 @@ pkgs = list(pkgs)
 
 setup(
     name='appkit',
-    version='0.0.0.20160804.1',
+    version='0.9.0',
     author='Luis López',
     author_email='ldotlopez@gmail.com',
     packages=['appkit'],
