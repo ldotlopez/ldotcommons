@@ -60,6 +60,10 @@ class ArgumentsError(ExtensionError):
     pass
 
 
+class RequirementError(ExtensionError):
+    pass
+
+
 def cliargument(*args, **kwargs):
     """
     argparse argument wrapper to ease the command argument definitions

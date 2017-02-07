@@ -3,6 +3,8 @@ from appkit.application.base import (
     Extension,
     ArgumentsError,
     ConfigurationError,
+    RequirementError,
+    ExtensionError,
     ExtensionNotFoundError,
     cliargument
 )
@@ -13,6 +15,8 @@ __all__ = [
     'Extension',
     'ArgumentsError',
     'ConfigurationError',
+    'RequirementError',
+    'ExtensionError',
     'ExtensionNotFoundError',
     'cliargument'
 ]
